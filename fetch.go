@@ -14,10 +14,10 @@ type Fetcher struct {
 	client *http.Client
 }
 
-type FetchOption func(*Fetcher)
+type FetcherOption func(*Fetcher)
 
-// NewFetcher is returning a new Fetcher
-func NewFetcher(url *url.URL, client *http.Client, options ...FetchOption) *Fetcher {
+// NewFetcher is returning a new Fetcher.
+func NewFetcher(url *url.URL, client *http.Client, options ...FetcherOption) *Fetcher {
 
 	fetcher := &Fetcher{
 		url:    url,
@@ -48,6 +48,7 @@ func (f *Fetcher) Stream() (body io.ReadCloser, err error) {
 	return resp.Body, nil
 }
 
+// Fetch is returning the whole content of the body of the site associated to the Fetcher.
 func (f *Fetcher) Fetch() (content []byte, err error) {
 	body, err := f.Stream()
 	if err != nil {
