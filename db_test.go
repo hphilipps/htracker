@@ -22,7 +22,7 @@ func TestDB_Equal(t *testing.T) {
 
 func TestMemoryDB_UpdateSite(t *testing.T) {
 
-	db := MemoryDB{}
+	db := NewMemoryDB()
 
 	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
 	site2 := &Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
@@ -89,4 +89,10 @@ func TestMemoryDB_UpdateSite(t *testing.T) {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, want, got)
 		}
 	}
+
+	_, _, _, _, _, err := db.GetSite("http://does/not/exist", "some_filter", "some_content_type")
+	if err != ErrNotExist {
+		t.Fatalf("GetSite: Expected ErrNotExist error, got %v", err)
+	}
+
 }

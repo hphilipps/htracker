@@ -2,10 +2,13 @@ package htracker
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"golang.org/x/exp/slog"
 )
 
 var ErrNotExist = errors.New("the item could not be found")
@@ -34,11 +37,11 @@ type SiteDB interface {
 // SubscriberDB is an interface for a DB to store subscribers to updates of web sites
 // to be scraped.
 type SubscriberDB interface {
-	UpdateSubscriber(email string, sites []Site) error
-	GetSitesBySubscriber(email string) (sites []Site, err error)
-	GetSubscribersBySite(site Site) (emails []string, err error)
+	Subscribe(email string, site *Site) error
+	GetSitesBySubscriber(email string) (sites []*Site, err error)
+	GetSubscribersBySite(site *Site) (emails []string, err error)
 	GetSubscribers() (emails []string, err error)
-	Unsubscribe(email string, site Site) error
+	Unsubscribe(email string, site *Site) error
 	DeleteSubscriber(email string) error
 }
 
@@ -55,7 +58,7 @@ type siteArchive struct {
 // subscriber is holding the list of subscribed sites of a subscriber.
 type subscriber struct {
 	email string
-	sites []Site
+	sites []*Site
 }
 
 // diffText is a helper function for comparing the content of two sites.
@@ -67,13 +70,22 @@ func diffText(s1, s2 string) string {
 
 // compiler check of interface implementation
 var _ SiteDB = &MemoryDB{}
+var _ SubscriberDB = &MemoryDB{}
 
 // MemoryDB is an in-memory implementation of SiteDB - mainly for testing.
 type MemoryDB struct {
 	sites       []*siteArchive
 	subscribers []*subscriber
+	logger      slog.Logger
 	mu          sync.Mutex
 }
+
+// NewMemoryDB returns a new MomeoryDB instance.
+func NewMemoryDB() *MemoryDB {
+	return &MemoryDB{logger: *slog.New(slog.NewTextHandler(os.Stdout).WithGroup("memory_db"))}
+}
+
+/*** methods for implementing SiteDB interface ***/
 
 // UpdateSite is updating the DB with the results of the latest scrape of a site.
 func (db *MemoryDB) UpdateSite(date time.Time, site Site, content []byte, checksum string) (diff string, err error) {
@@ -129,4 +141,106 @@ func (db *MemoryDB) GetSite(url, filter, contentType string) (lastUpdated, lastC
 	}
 
 	return time.Time{}, time.Time{}, []byte{}, "", "", ErrNotExist
+}
+
+/*** methods for implementing SubscriberDB interface ***/
+
+func (db *MemoryDB) Subscribe(email string, site *Site) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	found := false
+	for _, subscriber := range db.subscribers {
+		if subscriber.email == email {
+			for _, s := range subscriber.sites {
+				if s.Equals(site) {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+
+			// subscription not found above - adding site to list of sites
+			subscriber.sites = append(subscriber.sites, site)
+			break
+		}
+	}
+
+	// subscriber not found above - adding new subscriber
+	db.subscribers = append(db.subscribers, &subscriber{email: email, sites: []*Site{site}})
+
+	return nil
+}
+
+func (db *MemoryDB) GetSitesBySubscriber(email string) (sites []*Site, err error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for _, subscriber := range db.subscribers {
+		if subscriber.email == email {
+			return subscriber.sites, nil
+		}
+	}
+
+	return nil, ErrNotExist
+}
+
+func (db *MemoryDB) GetSubscribersBySite(site *Site) (emails []string, err error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for _, subscriber := range db.subscribers {
+		for _, s := range subscriber.sites {
+			if s.Equals(site) {
+				emails = append(emails, subscriber.email)
+			}
+		}
+	}
+
+	return emails, nil
+}
+
+func (db *MemoryDB) GetSubscribers() (emails []string, err error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for _, subscriber := range db.subscribers {
+		emails = append(emails, subscriber.email)
+	}
+
+	return emails, nil
+}
+
+func (db *MemoryDB) Unsubscribe(email string, site *Site) error {
+	for _, subscriber := range db.subscribers {
+		if subscriber.email == email {
+
+			for i, s := range subscriber.sites {
+				if s.Equals(site) {
+					//remove element i from list
+					subscriber.sites[i] = subscriber.sites[len(subscriber.sites)-1]
+					subscriber.sites = subscriber.sites[:len(subscriber.sites)-1]
+					return nil
+				}
+			}
+
+			return fmt.Errorf("unsubscribe: %s was not subscribed to url %s, filter %s, content type %s, %w",
+				email, site.URL, site.Filter, site.ContentType, ErrNotExist)
+		}
+	}
+
+	return fmt.Errorf("unsubscribe: email %s not found - %w", email, ErrNotExist)
+}
+
+func (db *MemoryDB) DeleteSubscriber(email string) error {
+	for i, subscriber := range db.subscribers {
+		if subscriber.email == email {
+			db.subscribers[i] = db.subscribers[len(db.subscribers)-1]
+			db.subscribers = db.subscribers[:len(db.subscribers)-1]
+			return nil
+		}
+	}
+	return ErrNotExist
 }

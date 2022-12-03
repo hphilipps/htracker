@@ -3,16 +3,19 @@ package htracker
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
+
+	"golang.org/x/exp/slog"
 )
 
 type Exporter struct {
-	ctx context.Context
-	db  SiteDB
+	ctx    context.Context
+	db     SiteDB
+	logger slog.Logger
 }
 
 func NewExporter(ctx context.Context, db SiteDB) *Exporter {
-	return &Exporter{ctx: ctx, db: db}
+	return &Exporter{ctx: ctx, db: db, logger: *slog.New(slog.NewTextHandler(os.Stdout).WithGroup("exporter"))}
 }
 
 func (e *Exporter) Export(exports chan interface{}) error {
@@ -25,12 +28,12 @@ func (e *Exporter) Export(exports chan interface{}) error {
 
 		_, err := e.db.UpdateSite(sarchive.lastChecked, *sarchive.site, sarchive.content, sarchive.checksum)
 		if err != nil {
-			log.Printf("exporter: failed to update site in db - %v", err)
+			e.logger.Error("failed to update site in db", err)
 		}
 
 		select {
 		case <-e.ctx.Done():
-			log.Printf("exporter: was signaled to stop via context - some results might not have been stored")
+			e.logger.Warn("was signaled to stop via context - some scrape results might not have been exported to storage")
 			return nil
 		default:
 		}
