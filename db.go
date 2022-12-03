@@ -12,6 +12,7 @@ import (
 )
 
 var ErrNotExist = errors.New("the item could not be found")
+var ErrAlreadyExists = errors.New("the item already exists")
 
 // Site contains the meta data necessary to describe a web site to be scraped.
 type Site struct {
@@ -145,26 +146,22 @@ func (db *MemoryDB) GetSite(url, filter, contentType string) (lastUpdated, lastC
 
 /*** methods for implementing SubscriberDB interface ***/
 
+// Subscribe is adding a subscription for the given email and will return
+// an error if the subscription already exists.
 func (db *MemoryDB) Subscribe(email string, site *Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	found := false
 	for _, subscriber := range db.subscribers {
 		if subscriber.email == email {
 			for _, s := range subscriber.sites {
 				if s.Equals(site) {
-					found = true
-					break
+					return fmt.Errorf("subscription already exists, %w", ErrAlreadyExists)
 				}
 			}
-			if found {
-				break
-			}
-
 			// subscription not found above - adding site to list of sites
 			subscriber.sites = append(subscriber.sites, site)
-			break
+			return nil
 		}
 	}
 
@@ -174,6 +171,7 @@ func (db *MemoryDB) Subscribe(email string, site *Site) error {
 	return nil
 }
 
+// GetSitesBySubscribers returns a list of subscribed sites for the given subscriber.
 func (db *MemoryDB) GetSitesBySubscriber(email string) (sites []*Site, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -187,6 +185,7 @@ func (db *MemoryDB) GetSitesBySubscriber(email string) (sites []*Site, err error
 	return nil, ErrNotExist
 }
 
+// GetSubscribersBySite returns a list of subscribed emails for a given site.
 func (db *MemoryDB) GetSubscribersBySite(site *Site) (emails []string, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -195,6 +194,7 @@ func (db *MemoryDB) GetSubscribersBySite(site *Site) (emails []string, err error
 		for _, s := range subscriber.sites {
 			if s.Equals(site) {
 				emails = append(emails, subscriber.email)
+				break
 			}
 		}
 	}
@@ -202,6 +202,7 @@ func (db *MemoryDB) GetSubscribersBySite(site *Site) (emails []string, err error
 	return emails, nil
 }
 
+// GetSubscribers returns all existing subscribers.
 func (db *MemoryDB) GetSubscribers() (emails []string, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -214,6 +215,9 @@ func (db *MemoryDB) GetSubscribers() (emails []string, err error) {
 }
 
 func (db *MemoryDB) Unsubscribe(email string, site *Site) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	for _, subscriber := range db.subscribers {
 		if subscriber.email == email {
 
@@ -235,6 +239,9 @@ func (db *MemoryDB) Unsubscribe(email string, site *Site) error {
 }
 
 func (db *MemoryDB) DeleteSubscriber(email string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	for i, subscriber := range db.subscribers {
 		if subscriber.email == email {
 			db.subscribers[i] = db.subscribers[len(db.subscribers)-1]

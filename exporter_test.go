@@ -55,7 +55,7 @@ func TestExporter_Export(t *testing.T) {
 	go func() {
 		err := exporter.Export(exports)
 		if err != nil {
-			t.Fatalf("Exporter failed to export: %v", err)
+			t.Errorf("Exporter failed to export: %v", err)
 		}
 	}()
 
