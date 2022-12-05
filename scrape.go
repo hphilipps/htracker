@@ -62,6 +62,11 @@ func newParseFunc(site *Site, logger *slog.Logger) func(*geziyor.Geziyor, *clien
 
 		var content []byte
 
+		if r.Response.StatusCode >= 400 {
+			logger.Warn("got error status code", "code", r.Response.StatusCode, "url", site.URL)
+			return
+		}
+
 		if site.Filter == "" {
 			content = r.Body
 		} else {
@@ -70,7 +75,7 @@ func newParseFunc(site *Site, logger *slog.Logger) func(*geziyor.Geziyor, *clien
 			} else {
 				exp, err := regexp.Compile(site.Filter)
 				if err != nil {
-					logger.Error("newParseFunc failed to compile regexp", err, "regexp", site.Filter, "site", site.URL)
+					logger.Error("ParseFunc failed to compile regexp", err, "regexp", site.Filter, "site", site.URL)
 					return
 				}
 				content = exp.Find(r.Body)
