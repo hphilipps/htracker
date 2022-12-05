@@ -41,29 +41,29 @@ func TestScraper(t *testing.T) {
 	scraper.Start()
 
 	for _, s := range sites {
-		lastUpdated, lastChecked, content, checksum, diff, err := db.GetSite(s.URL, "", "")
+		sa, err := db.GetSiteArchive(s)
 
 		if err != nil {
 			t.Errorf("MemoryDB.GetSite() failed: %v", err)
 		}
 
-		if lastUpdated.Before(date) {
-			t.Errorf("Expected lastUpdated to be after %v, got %v", date, lastUpdated)
+		if sa.LastUpdated.Before(date) {
+			t.Errorf("Expected lastUpdated to be after %v, got %v", date, sa.LastUpdated)
 		}
 
-		if !lastUpdated.Equal(lastChecked) {
-			t.Errorf("Expected lastUpdated (%v) to be equal to lastChecked (%v)", lastUpdated, lastChecked)
+		if !sa.LastUpdated.Equal(sa.LastChecked) {
+			t.Errorf("Expected lastUpdated (%v) to be equal to lastChecked (%v)", sa.LastUpdated, sa.LastChecked)
 		}
 
-		if len(content) < 10 {
-			t.Errorf("Expected content length to be greater then 10, got %d", len(content))
+		if len(sa.Content) < 10 {
+			t.Errorf("Expected content length to be greater then 10, got %d", len(sa.Content))
 		}
 
-		if checksum == "" {
+		if sa.Checksum == "" {
 			t.Errorf("Expected checksum not to be empty")
 		}
 
-		if diff != "" {
+		if sa.Diff != "" {
 			t.Errorf("Expected diff to be empty")
 		}
 	}

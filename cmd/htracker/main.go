@@ -41,23 +41,23 @@ func main() {
 
 	h1.Start()
 
-	lastUpdated, lastChecked, content, checksum, diff, err := db.GetSite(site.URL, site.Filter, site.ContentType)
+	sa, err := db.GetSiteArchive(site)
 	if err != nil {
-		logger.Error("db.GetSite failed", err)
+		logger.Error("db.GetSiteArchive failed", err)
 		os.Exit(1)
 	}
 
-	logger.Info("Site on 1st update", "lastUdpdated", lastUpdated, "lastChecked", lastChecked, "checksum", checksum, "diff", diff, "content", string(content)[0:20])
+	logger.Info("Site on 1st update", "lastUdpdated", sa.LastUpdated, "lastChecked", sa.LastChecked, "checksum", sa.Checksum, "diff", sa.Diff, "content", string(sa.Content)[0:20])
 
 	time.Sleep(time.Second)
 
 	h2.Start()
 
-	lastUpdated, lastChecked, content, checksum, diff, err = db.GetSite(site.URL, site.Filter, site.ContentType)
+	sa, err = db.GetSiteArchive(site)
 	if err != nil {
-		logger.Error("db.GetSite failed", err)
+		logger.Error("db.GetSiteArchive failed", err)
 		os.Exit(1)
 	}
 
-	logger.Info("Site on 2nd update", "lastUdpdated", lastUpdated, "lastChecked", lastChecked, "checksum", checksum, "diff", diff, "content", string(content)[0:20])
+	logger.Info("Site on 2nd update", "lastUdpdated", sa.LastUpdated, "lastChecked", sa.LastChecked, "checksum", sa.Checksum, "diff", sa.Diff, "content", string(sa.Content)[0:20])
 }

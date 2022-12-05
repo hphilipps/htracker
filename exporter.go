@@ -28,12 +28,12 @@ func NewExporter(ctx context.Context, db SiteDB) *DBExporter {
 func (e *DBExporter) Export(exports chan interface{}) error {
 	for res := range exports {
 
-		sarchive, ok := res.(*siteArchive)
+		sarchive, ok := res.(*SiteArchive)
 		if !ok {
 			return fmt.Errorf("expected response of type *siteArchive, got %T", res)
 		}
 
-		_, err := e.db.UpdateSite(sarchive.lastChecked, *sarchive.site, sarchive.content, sarchive.checksum)
+		_, err := e.db.UpdateSiteArchive(sarchive)
 		if err != nil {
 			e.logger.Error("failed to update site in db", err)
 		}

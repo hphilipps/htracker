@@ -62,27 +62,27 @@ func TestExporter_Export(t *testing.T) {
 	for _, tc := range testcases {
 
 		// simulate sending result from scraper and wait a bit for the DB to get updated
-		exports <- &siteArchive{site: tc.site, lastUpdated: tc.date, lastChecked: tc.date, content: tc.content, checksum: fmt.Sprintf("%x", md5.Sum([]byte(tc.content)))}
+		exports <- &SiteArchive{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date, Content: tc.content, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(tc.content)))}
 		time.Sleep(time.Millisecond)
 
-		lastUpdated, lastChecked, content, checksum, diff, err := db.GetSite(tc.site.URL, tc.site.Filter, tc.site.ContentType)
+		sa, err := db.GetSiteArchive(tc.site)
 		if err != nil {
-			t.Fatalf("%s: db.GetSite failed: %v", tc.name, err)
+			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
 		}
 
-		if want, got := tc.updateDateExpected, lastUpdated; want != got {
+		if want, got := tc.updateDateExpected, sa.LastUpdated; want != got {
 			t.Fatalf("%s: Expected lastUpdated %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checkDateExpected, lastChecked; want != got {
+		if want, got := tc.checkDateExpected, sa.LastChecked; want != got {
 			t.Fatalf("%s: Expected lastChecked %s, got %s", tc.name, want, got)
 		}
-		if want, got := string(tc.content), string(content); want != got {
+		if want, got := string(tc.content), string(sa.Content); want != got {
 			t.Fatalf("%s: Expected content %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checksum, checksum; want != got {
+		if want, got := tc.checksum, sa.Checksum; want != got {
 			t.Fatalf("%s: Expected checksum %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.diffExpected, diff; want != got {
+		if want, got := tc.diffExpected, sa.Diff; want != got {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, want, got)
 		}
 	}

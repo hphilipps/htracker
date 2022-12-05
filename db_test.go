@@ -21,7 +21,7 @@ func TestDB_Equal(t *testing.T) {
 	}
 }
 
-func TestMemoryDB_UpdateSite(t *testing.T) {
+func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 
 	db := NewMemoryDB()
 
@@ -60,30 +60,30 @@ func TestMemoryDB_UpdateSite(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		diff, err := db.UpdateSite(tc.date, *tc.site, tc.content, tc.checksum)
+		diff, err := db.UpdateSiteArchive(&SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
 		if err != nil {
-			t.Fatalf("%s: db.UpdateSite failed: %v", tc.name, err)
+			t.Fatalf("%s: db.UpdateSiteArchive failed: %v", tc.name, err)
 		}
 
 		if want, got := tc.diffExpected, diff; want != got {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, tc.diffExpected, diff)
 		}
 
-		lastUpdated, lastChecked, content, checksum, diff, err := db.GetSite(tc.site.URL, tc.site.Filter, tc.site.ContentType)
+		sa, err := db.GetSiteArchive(tc.site)
 		if err != nil {
-			t.Fatalf("%s: db.GetSite failed: %v", tc.name, err)
+			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
 		}
 
-		if want, got := tc.updateDateExpected, lastUpdated; want != got {
+		if want, got := tc.updateDateExpected, sa.LastUpdated; want != got {
 			t.Fatalf("%s: Expected lastUpdated %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checkDateExpected, lastChecked; want != got {
+		if want, got := tc.checkDateExpected, sa.LastChecked; want != got {
 			t.Fatalf("%s: Expected lastChecked %s, got %s", tc.name, want, got)
 		}
-		if want, got := string(tc.content), string(content); want != got {
+		if want, got := string(tc.content), string(sa.Content); want != got {
 			t.Fatalf("%s: Expected content %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checksum, checksum; want != got {
+		if want, got := tc.checksum, sa.Checksum; want != got {
 			t.Fatalf("%s: Expected checksum %s, got %s", tc.name, want, got)
 		}
 		if want, got := tc.diffExpected, diff; want != got {
@@ -91,11 +91,10 @@ func TestMemoryDB_UpdateSite(t *testing.T) {
 		}
 	}
 
-	_, _, _, _, _, err := db.GetSite("http://does/not/exist", "some_filter", "some_content_type")
+	_, err := db.GetSiteArchive(&Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
 	if err != ErrNotExist {
-		t.Fatalf("GetSite: Expected ErrNotExist error, got %v", err)
+		t.Fatalf("GetSiteArchive: Expected ErrNotExist error, got %v", err)
 	}
-
 }
 
 func TestMemoryDB_Subscribe(t *testing.T) {
