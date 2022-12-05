@@ -41,7 +41,7 @@ func (e *DBExporter) Export(exports chan interface{}) error {
 		select {
 		case <-e.ctx.Done():
 			e.logger.Warn("was signaled to stop via context - some scrape results might not have been exported to storage")
-			return nil
+			return e.ctx.Err()
 		default:
 		}
 	}
