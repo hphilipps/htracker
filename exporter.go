@@ -5,20 +5,27 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/geziyor/geziyor/export"
 	"golang.org/x/exp/slog"
 )
 
-type Exporter struct {
+// type Exporter interface {
+// 	Export(exports chan interface{}) error
+// }
+
+type Exporter = export.Exporter
+
+type DBExporter struct {
 	ctx    context.Context
 	db     SiteDB
 	logger slog.Logger
 }
 
-func NewExporter(ctx context.Context, db SiteDB) *Exporter {
-	return &Exporter{ctx: ctx, db: db, logger: *slog.New(slog.NewTextHandler(os.Stdout).WithGroup("exporter"))}
+func NewExporter(ctx context.Context, db SiteDB) *DBExporter {
+	return &DBExporter{ctx: ctx, db: db, logger: *slog.New(slog.NewTextHandler(os.Stdout).WithGroup("exporter"))}
 }
 
-func (e *Exporter) Export(exports chan interface{}) error {
+func (e *DBExporter) Export(exports chan interface{}) error {
 	for res := range exports {
 
 		sarchive, ok := res.(*siteArchive)

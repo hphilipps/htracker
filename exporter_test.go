@@ -48,7 +48,7 @@ func TestExporter_Export(t *testing.T) {
 
 	ctx := context.Background()
 	exports := make(chan interface{}, 1)
-	db := &MemoryDB{}
+	db := NewMemoryDB()
 	exporter := NewExporter(ctx, db)
 
 	// run exporter in background
