@@ -8,6 +8,7 @@ type Subscriber struct {
 	Sites []*htracker.Site
 }
 
+// SubscriptionStorage is an interface describing a storage backend for a Subscription service.
 type SubscriptionStorage interface {
 	FindBySubscriber(email string) (sites []*htracker.Site, err error)
 	FindBySite(*htracker.Site) (subscribers []*Subscriber, err error)
