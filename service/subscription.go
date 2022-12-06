@@ -25,10 +25,12 @@ type Subscriber struct {
 	Sites []*htracker.Site
 }
 
+// NewSubscriptionSvc is returning a new SubscriptionService using the given storage backend.
 func NewSubscriptionSvc(storage storage.SubscriptionStorage) *subscriptionSvc {
 	return &subscriptionSvc{storage: storage}
 }
 
+// subscriptionSvc is implementing the Subscription service interface.
 type subscriptionSvc struct {
 	storage storage.SubscriptionStorage
 	logger  slog.Logger

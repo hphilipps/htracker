@@ -15,6 +15,7 @@ type SiteArchive interface {
 	Get(site *htracker.Site) (sa *htracker.SiteArchive, err error)
 }
 
+// NewSiteArchive is returning a new SiteArchive using the given storage backend.
 func NewSiteArchive(storage storage.ArchiveStorage) *siteArchive {
 	return &siteArchive{storage: storage}
 }

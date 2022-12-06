@@ -9,14 +9,6 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func NewArchiveStorage(logger slog.Logger) *DB {
-	return &DB{logger: logger}
-}
-
-func NewSubscriptionStorage(logger slog.Logger) *DB {
-	return &DB{logger: logger}
-}
-
 // DB is an in-memory implementation of the Archive and Subscription storage interfaces - mainly for testing.
 type DB struct {
 	sites       []*htracker.SiteArchive
@@ -25,8 +17,22 @@ type DB struct {
 	mu          sync.Mutex
 }
 
+// NewArchiveStorage returns a new in-memory site archive storage which can be used by a SiteArchive service.
+func NewArchiveStorage(logger slog.Logger) *DB {
+	return &DB{logger: logger}
+}
+
+// NewSubscriptionStorage returns a new in-memory SubscriptionStorage which can be used by a Subscription service.
+func NewSubscriptionStorage(logger slog.Logger) *DB {
+	return &DB{logger: logger}
+}
+
 /*** Implementation of SubscriptionStorage interface ***/
 
+// compile time check of interface implementation
+var _ storage.ArchiveStorage = &DB{}
+
+// Find is returning the site archive for the given site or ErrNotExist if not found.
 func (db *DB) Find(site *htracker.Site) (sa *htracker.SiteArchive, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -40,6 +46,7 @@ func (db *DB) Find(site *htracker.Site) (sa *htracker.SiteArchive, err error) {
 	return &htracker.SiteArchive{}, htracker.ErrNotExist
 }
 
+// Add is adding a new site to the archive.
 func (db *DB) Add(sa *htracker.SiteArchive) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -62,6 +69,7 @@ func (db *DB) Add(sa *htracker.SiteArchive) error {
 	return nil
 }
 
+// Update is updating a site in the archive if found.
 func (db *DB) Update(sa *htracker.SiteArchive) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -83,6 +91,10 @@ func (db *DB) Update(sa *htracker.SiteArchive) error {
 
 /*** Implementation of SubscriptionStorage interface ***/
 
+// compile time check of interface implementation
+var _ storage.SubscriptionStorage = &DB{}
+
+// FindBySubscriber is returning all subscribed sites for a given subscriber.
 func (db *DB) FindBySubscriber(email string) (sites []*htracker.Site, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -96,6 +108,7 @@ func (db *DB) FindBySubscriber(email string) (sites []*htracker.Site, err error)
 	return nil, htracker.ErrNotExist
 }
 
+// FindBySite is returning all subscribers subscribed to the given site.
 func (db *DB) FindBySite(site *htracker.Site) (subscribers []*storage.Subscriber, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -112,6 +125,7 @@ func (db *DB) FindBySite(site *htracker.Site) (subscribers []*storage.Subscriber
 	return subscribers, nil
 }
 
+// GetAllSubscribers is returning all subscribers.
 func (db *DB) GetAllSubscribers() (subscribers []*storage.Subscriber, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -119,6 +133,7 @@ func (db *DB) GetAllSubscribers() (subscribers []*storage.Subscriber, err error)
 	return db.subscribers, nil
 }
 
+// AddSubscription is adding a new subscription if it doesn't exist yet.
 func (db *DB) AddSubscription(email string, site *htracker.Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -142,6 +157,7 @@ func (db *DB) AddSubscription(email string, site *htracker.Site) error {
 	return nil
 }
 
+// RemoveSubscription is removing the subscription of a subscriber to a site.
 func (db *DB) RemoveSubscription(email string, site *htracker.Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -166,6 +182,7 @@ func (db *DB) RemoveSubscription(email string, site *htracker.Site) error {
 	return fmt.Errorf("email %s not found - %w", email, htracker.ErrNotExist)
 }
 
+// RemoveSubscriber is removing a subscriber with all it's subscriptions.
 func (db *DB) RemoveSubscriber(email string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
