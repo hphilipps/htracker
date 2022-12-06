@@ -17,8 +17,8 @@ func (s *Site) Equals(site *Site) bool {
 	return s.URL == site.URL && s.Filter == site.Filter && s.ContentType == site.ContentType
 }
 
-// SiteArchive is holding metadata, checksum and content of a scraped web site.
-type SiteArchive struct {
+// SiteContent is holding metadata, checksum, content and diff to previous version of a scraped web site.
+type SiteContent struct {
 	Site        *Site
 	LastUpdated time.Time
 	LastChecked time.Time

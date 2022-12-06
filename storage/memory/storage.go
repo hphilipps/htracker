@@ -9,79 +9,79 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// DB is an in-memory implementation of the Archive and Subscription storage interfaces - mainly for testing.
-type DB struct {
-	sites       []*htracker.SiteArchive
+// memDB is an in-memory implementation of the Archive and Subscription storage interfaces - mainly for testing.
+type memDB struct {
+	archive     []*htracker.SiteContent
 	subscribers []*storage.Subscriber
 	logger      slog.Logger
 	mu          sync.Mutex
 }
 
-// NewArchiveStorage returns a new in-memory site archive storage which can be used by a SiteArchive service.
-func NewArchiveStorage(logger slog.Logger) *DB {
-	return &DB{logger: logger}
+// NewSiteStorage returns a new in-memory site content storage which can be used by a SiteArchive service.
+func NewSiteStorage(logger slog.Logger) *memDB {
+	return &memDB{logger: logger}
 }
 
 // NewSubscriptionStorage returns a new in-memory SubscriptionStorage which can be used by a Subscription service.
-func NewSubscriptionStorage(logger slog.Logger) *DB {
-	return &DB{logger: logger}
+func NewSubscriptionStorage(logger slog.Logger) *memDB {
+	return &memDB{logger: logger}
 }
 
 /*** Implementation of SubscriptionStorage interface ***/
 
 // compile time check of interface implementation
-var _ storage.ArchiveStorage = &DB{}
+var _ storage.SiteStorage = &memDB{}
 
-// Find is returning the site archive for the given site or ErrNotExist if not found.
-func (db *DB) Find(site *htracker.Site) (sa *htracker.SiteArchive, err error) {
+// Find is returning the site content for the given site or ErrNotExist if not found.
+func (db *memDB) Find(site *htracker.Site) (content *htracker.SiteContent, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	for _, sarchive := range db.sites {
-		if site.Equals(sarchive.Site) {
-			return sarchive, nil
+	for _, sc := range db.archive {
+		if site.Equals(sc.Site) {
+			return sc, nil
 		}
 	}
 
-	return &htracker.SiteArchive{}, htracker.ErrNotExist
+	return &htracker.SiteContent{}, htracker.ErrNotExist
 }
 
 // Add is adding a new site to the archive.
-func (db *DB) Add(sa *htracker.SiteArchive) error {
+func (db *memDB) Add(content *htracker.SiteContent) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	for _, sarchive := range db.sites {
-		if sa.Site.Equals(sarchive.Site) {
+	for _, sc := range db.archive {
+		if content.Site.Equals(sc.Site) {
 			return htracker.ErrAlreadyExists
 		}
 	}
 
-	db.sites = append(db.sites, &htracker.SiteArchive{
-		Site:        sa.Site,
-		LastUpdated: sa.LastChecked,
-		LastChecked: sa.LastChecked,
-		Content:     sa.Content,
-		Checksum:    sa.Checksum,
+	db.archive = append(db.archive, &htracker.SiteContent{
+		Site:        content.Site,
+		LastUpdated: content.LastChecked,
+		LastChecked: content.LastChecked,
+		Content:     content.Content,
+		Checksum:    content.Checksum,
 		Diff:        "",
 	})
 
 	return nil
 }
 
-// Update is updating a site in the archive if found.
-func (db *DB) Update(sa *htracker.SiteArchive) error {
+// Update is updating a site in the site archive if found.
+func (db *memDB) Update(content *htracker.SiteContent) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	for _, sarchive := range db.sites {
-		if sa.Site.Equals(sarchive.Site) {
-			sarchive.Site = sa.Site
-			sarchive.LastChecked = sa.LastChecked
-			sarchive.LastUpdated = sa.LastUpdated
-			sarchive.Diff = sa.Diff
-			sarchive.Content = sa.Content
-			sarchive.Checksum = sa.Checksum
+	for _, sc := range db.archive {
+		if content.Site.Equals(sc.Site) {
+			sc.Site = content.Site
+			sc.LastChecked = content.LastChecked
+			sc.LastUpdated = content.LastUpdated
+			sc.Diff = content.Diff
+			sc.Content = content.Content
+			sc.Checksum = content.Checksum
 
 			return nil
 		}
@@ -92,10 +92,10 @@ func (db *DB) Update(sa *htracker.SiteArchive) error {
 /*** Implementation of SubscriptionStorage interface ***/
 
 // compile time check of interface implementation
-var _ storage.SubscriptionStorage = &DB{}
+var _ storage.SubscriptionStorage = &memDB{}
 
 // FindBySubscriber is returning all subscribed sites for a given subscriber.
-func (db *DB) FindBySubscriber(email string) (sites []*htracker.Site, err error) {
+func (db *memDB) FindBySubscriber(email string) (sites []*htracker.Site, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -109,7 +109,7 @@ func (db *DB) FindBySubscriber(email string) (sites []*htracker.Site, err error)
 }
 
 // FindBySite is returning all subscribers subscribed to the given site.
-func (db *DB) FindBySite(site *htracker.Site) (subscribers []*storage.Subscriber, err error) {
+func (db *memDB) FindBySite(site *htracker.Site) (subscribers []*storage.Subscriber, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -126,7 +126,7 @@ func (db *DB) FindBySite(site *htracker.Site) (subscribers []*storage.Subscriber
 }
 
 // GetAllSubscribers is returning all subscribers.
-func (db *DB) GetAllSubscribers() (subscribers []*storage.Subscriber, err error) {
+func (db *memDB) GetAllSubscribers() (subscribers []*storage.Subscriber, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -134,7 +134,7 @@ func (db *DB) GetAllSubscribers() (subscribers []*storage.Subscriber, err error)
 }
 
 // AddSubscription is adding a new subscription if it doesn't exist yet.
-func (db *DB) AddSubscription(email string, site *htracker.Site) error {
+func (db *memDB) AddSubscription(email string, site *htracker.Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -158,7 +158,7 @@ func (db *DB) AddSubscription(email string, site *htracker.Site) error {
 }
 
 // RemoveSubscription is removing the subscription of a subscriber to a site.
-func (db *DB) RemoveSubscription(email string, site *htracker.Site) error {
+func (db *memDB) RemoveSubscription(email string, site *htracker.Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -183,7 +183,7 @@ func (db *DB) RemoveSubscription(email string, site *htracker.Site) error {
 }
 
 // RemoveSubscriber is removing a subscriber with all it's subscriptions.
-func (db *DB) RemoveSubscriber(email string) error {
+func (db *memDB) RemoveSubscriber(email string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 

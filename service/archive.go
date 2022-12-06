@@ -1,8 +1,12 @@
 package service
 
 import (
+	"bytes"
+	"crypto/md5"
 	"errors"
 	"fmt"
+	"strings"
+	"unicode"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gitlab.com/henri.philipps/htracker"
@@ -11,28 +15,28 @@ import (
 
 // SiteArchive is an interface for a service that can store the state of scraped web sites (content, checksum etc).
 type SiteArchive interface {
-	Update(*htracker.SiteArchive) (diff string, err error)
-	Get(site *htracker.Site) (sa *htracker.SiteArchive, err error)
+	Update(*htracker.SiteContent) (diff string, err error)
+	Get(site *htracker.Site) (content *htracker.SiteContent, err error)
 }
 
 // NewSiteArchive is returning a new SiteArchive using the given storage backend.
-func NewSiteArchive(storage storage.ArchiveStorage) *siteArchive {
+func NewSiteArchive(storage storage.SiteStorage) *siteArchive {
 	return &siteArchive{storage: storage}
 }
 
 // siteArchive is implementing SiteArchive
 type siteArchive struct {
-	storage storage.ArchiveStorage
+	storage storage.SiteStorage
 }
 
 // Update is updating the DB with the results of the latest scrape of a site.
-func (archive *siteArchive) Update(sa *htracker.SiteArchive) (diff string, err error) {
+func (archive *siteArchive) Update(content *htracker.SiteContent) (diff string, err error) {
 
-	sarchive, err := archive.storage.Find(sa.Site)
+	sc, err := archive.storage.Find(content.Site)
 	if err != nil {
 		if errors.Is(err, htracker.ErrNotExist) {
 			// site archive not found - create new entry
-			if err := archive.storage.Add(sa); err != nil {
+			if err := archive.storage.Add(content); err != nil {
 				return "", fmt.Errorf("ArchiveStorage.Add() - %w", err)
 			}
 			return "", nil
@@ -41,41 +45,95 @@ func (archive *siteArchive) Update(sa *htracker.SiteArchive) (diff string, err e
 	}
 
 	// content unchanged
-	if sarchive.Checksum == sa.Checksum {
-		sarchive.LastChecked = sa.LastChecked
-		if err := archive.storage.Update(sarchive); err != nil {
+	if sc.Checksum == content.Checksum {
+		sc.LastChecked = content.LastChecked
+		if err := archive.storage.Update(sc); err != nil {
 			return "", fmt.Errorf("ArchiveStorage.Update() - %w", err)
 		}
 		return "", nil
 	}
 
 	// content changed
-	sarchive.LastChecked = sa.LastChecked
-	sarchive.LastUpdated = sa.LastChecked
-	sarchive.Diff = DiffText(string(sarchive.Content), string(sa.Content))
-	sarchive.Content = sa.Content
-	sarchive.Checksum = sa.Checksum
+	sc.LastChecked = content.LastChecked
 
-	if err := archive.storage.Update(sarchive); err != nil {
-		return sarchive.Diff, fmt.Errorf("ArchiveStorage.Update() - %w", err)
+	diff = DiffText(string(sc.Content), string(content.Content))
+	if diff == "" {
+		// The diff function is ignoring whitespace changes as sometimes
+		// whitespace is rendered randomly. So it can happen that we see
+		// a changed checksum, but no diff. In this case we treat the site
+		// as not changed.
+		return "", nil
 	}
-	return sarchive.Diff, nil
+
+	sc.Diff = diff
+	sc.LastUpdated = content.LastChecked
+	sc.Content = content.Content
+	sc.Checksum = content.Checksum
+
+	if err := archive.storage.Update(sc); err != nil {
+		return sc.Diff, fmt.Errorf("ArchiveStorage.Update() - %w", err)
+	}
+	return sc.Diff, nil
 }
 
 // Get is returning metadata, checksum and content of a site in the DB identified by URL, filter and contentType.
-func (archive *siteArchive) Get(site *htracker.Site) (sa *htracker.SiteArchive, err error) {
+func (archive *siteArchive) Get(site *htracker.Site) (content *htracker.SiteContent, err error) {
 
-	sa, err = archive.storage.Find(site)
+	content, err = archive.storage.Find(site)
 	if err != nil {
-		return &htracker.SiteArchive{}, fmt.Errorf("ArchiveStorage.Find() - %w", err)
+		return &htracker.SiteContent{}, fmt.Errorf("ArchiveStorage.Find() - %w", err)
 	}
 
-	return sa, nil
+	return content, nil
 }
 
-// DiffText is a helper function for comparing the content of two sites.
+func DiffPrintAsText(diffs []diffmatchpatch.Diff) string {
+	var buff bytes.Buffer
+	for _, diff := range diffs {
+		text := diff.Text
+
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			_, _ = buff.WriteString("\x1b[32m")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("\x1b[0m")
+		case diffmatchpatch.DiffDelete:
+			_, _ = buff.WriteString("\x1b[31m")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("\x1b[0m")
+		case diffmatchpatch.DiffEqual:
+		}
+	}
+
+	return buff.String()
+}
+
+// stripStringsBuilder is stripping whitespace from the given string
+func stripStringsBuilder(str string) string {
+	var b strings.Builder
+	b.Grow(len(str))
+	for _, ch := range str {
+		if !unicode.IsSpace(ch) {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
+}
+
+// DiffText is a helper function for comparing the content of sites.
+// We try to ignore whitespace changes, as sometimes whitespace seems to be rendered randomly.
 func DiffText(s1, s2 string) string {
+
+	if stripStringsBuilder(s1) == stripStringsBuilder(s2) {
+		return ""
+	}
+
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(s1, s2, true)
-	return dmp.DiffPrettyText(dmp.DiffCleanupSemantic(diffs))
+	diffs := dmp.DiffMain(s1, s2, false)
+	//return dmp.DiffPrettyText(dmp.DiffCleanupSemantic(diffs))
+	return DiffPrintAsText(dmp.DiffCleanupSemantic(diffs))
+}
+
+func Checksum(data []byte) string {
+	return fmt.Sprintf("%x", md5.Sum(data))
 }

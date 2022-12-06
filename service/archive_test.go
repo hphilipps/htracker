@@ -1,9 +1,7 @@
 package service
 
 import (
-	"crypto/md5"
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -15,7 +13,7 @@ import (
 
 func ArchiveService_UpdateSiteArchive(t *testing.T) {
 
-	storage := memory.NewArchiveStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	storage := memory.NewSiteStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
 	svc := NewSiteArchive(storage)
 
 	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
@@ -39,21 +37,21 @@ func ArchiveService_UpdateSiteArchive(t *testing.T) {
 		updateDateExpected time.Time
 	}{
 		{name: "add new site1", date: date1, site: site1, content: content1,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
+			checksum: Checksum([]byte(content1)), diffExpected: "",
 			checkDateExpected: date1, updateDateExpected: date1},
 		{name: "add new site2", date: date1, site: site2, content: content2,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content2))), diffExpected: "",
+			checksum: Checksum([]byte(content2)), diffExpected: "",
 			checkDateExpected: date1, updateDateExpected: date1},
 		{name: "site1 unchanged", date: date2, site: site1, content: content1,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
+			checksum: Checksum([]byte(content1)), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
 		{name: "update site1", date: date2, site: site1, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: DiffText(string(content1), string(content1Updated)),
+			checksum: Checksum([]byte(content1Updated)), diffExpected: DiffText(string(content1), string(content1Updated)),
 			checkDateExpected: date2, updateDateExpected: date2},
 	}
 
 	for _, tc := range testcases {
-		diff, err := svc.Update(&htracker.SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
+		diff, err := svc.Update(&htracker.SiteContent{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
 		if err != nil {
 			t.Fatalf("%s: db.UpdateSiteArchive failed: %v", tc.name, err)
 		}
@@ -62,21 +60,21 @@ func ArchiveService_UpdateSiteArchive(t *testing.T) {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, tc.diffExpected, diff)
 		}
 
-		sa, err := svc.Get(tc.site)
+		sc, err := svc.Get(tc.site)
 		if err != nil {
 			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
 		}
 
-		if want, got := tc.updateDateExpected, sa.LastUpdated; want != got {
+		if want, got := tc.updateDateExpected, sc.LastUpdated; want != got {
 			t.Fatalf("%s: Expected lastUpdated %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checkDateExpected, sa.LastChecked; want != got {
+		if want, got := tc.checkDateExpected, sc.LastChecked; want != got {
 			t.Fatalf("%s: Expected lastChecked %s, got %s", tc.name, want, got)
 		}
-		if want, got := string(tc.content), string(sa.Content); want != got {
+		if want, got := string(tc.content), string(sc.Content); want != got {
 			t.Fatalf("%s: Expected content %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checksum, sa.Checksum; want != got {
+		if want, got := tc.checksum, sc.Checksum; want != got {
 			t.Fatalf("%s: Expected checksum %s, got %s", tc.name, want, got)
 		}
 		if want, got := tc.diffExpected, diff; want != got {

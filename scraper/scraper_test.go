@@ -38,7 +38,7 @@ func TestScraper(t *testing.T) {
 		{URL: "http://quotes.toscrape.com/"},
 	}
 
-	storage := memory.NewArchiveStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	storage := memory.NewSiteStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
 	archive := service.NewSiteArchive(storage)
 	exp := exporter.NewExporter(context.Background(), archive)
 	scraper := NewScraper(sites, WithExporters([]exporter.Interface{exp}))

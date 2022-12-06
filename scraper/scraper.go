@@ -84,7 +84,7 @@ func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyo
 			}
 		}
 
-		sa := &htracker.SiteArchive{
+		sa := &htracker.SiteContent{
 			Site:        site,
 			LastChecked: time.Now(),
 			Content:     content,

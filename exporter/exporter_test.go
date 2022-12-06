@@ -2,8 +2,6 @@ package exporter
 
 import (
 	"context"
-	"crypto/md5"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -39,22 +37,22 @@ func TestExporter_Export(t *testing.T) {
 		updateDateExpected time.Time
 	}{
 		{name: "add new site1", date: date1, site: site1, content: content1,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
+			checksum: service.Checksum([]byte(content1)), diffExpected: "",
 			checkDateExpected: date1, updateDateExpected: date1},
 		{name: "add new site2", date: date1, site: site2, content: content2,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content2))), diffExpected: "",
+			checksum: service.Checksum([]byte(content2)), diffExpected: "",
 			checkDateExpected: date1, updateDateExpected: date1},
 		{name: "site1 unchanged", date: date2, site: site1, content: content1,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
+			checksum: service.Checksum([]byte(content1)), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
 		{name: "update site1", date: date3, site: site3, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: service.DiffText(string(content1), string(content1Updated)),
-			checkDateExpected: date3, updateDateExpected: date3},
+			checksum: service.Checksum([]byte(content1Updated)), diffExpected: service.DiffText(string(content1),
+				string(content1Updated)), checkDateExpected: date3, updateDateExpected: date3},
 	}
 
 	ctx := context.Background()
 	exports := make(chan interface{}, 1)
-	storage := memory.NewArchiveStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	storage := memory.NewSiteStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
 	archive := service.NewSiteArchive(storage)
 	exporter := NewExporter(ctx, archive)
 
@@ -69,27 +67,28 @@ func TestExporter_Export(t *testing.T) {
 	for _, tc := range testcases {
 
 		// simulate sending result from scraper and wait a bit for the DB to get updated
-		exports <- &htracker.SiteArchive{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date, Content: tc.content, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(tc.content)))}
+		exports <- &htracker.SiteContent{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date,
+			Content: tc.content, Checksum: service.Checksum([]byte(tc.content))}
 		time.Sleep(time.Millisecond)
 
-		sa, err := archive.Get(tc.site)
+		sc, err := archive.Get(tc.site)
 		if err != nil {
 			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
 		}
 
-		if want, got := tc.updateDateExpected, sa.LastUpdated; want != got {
+		if want, got := tc.updateDateExpected, sc.LastUpdated; want != got {
 			t.Fatalf("%s: Expected lastUpdated %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checkDateExpected, sa.LastChecked; want != got {
+		if want, got := tc.checkDateExpected, sc.LastChecked; want != got {
 			t.Fatalf("%s: Expected lastChecked %s, got %s", tc.name, want, got)
 		}
-		if want, got := string(tc.content), string(sa.Content); want != got {
+		if want, got := string(tc.content), string(sc.Content); want != got {
 			t.Fatalf("%s: Expected content %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.checksum, sa.Checksum; want != got {
+		if want, got := tc.checksum, sc.Checksum; want != got {
 			t.Fatalf("%s: Expected checksum %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.diffExpected, sa.Diff; want != got {
+		if want, got := tc.diffExpected, sc.Diff; want != got {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, want, got)
 		}
 	}
