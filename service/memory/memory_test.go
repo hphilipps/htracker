@@ -95,7 +95,7 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 	}
 
 	_, err := db.Get(&htracker.Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
-	if err != service.ErrNotExist {
+	if err != htracker.ErrNotExist {
 		t.Fatalf("GetSiteArchive: Expected ErrNotExist error, got %v", err)
 	}
 }

@@ -1,24 +1,25 @@
-package exporter
+package service
 
 import (
-	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"gitlab.com/henri.philipps/htracker"
-	"gitlab.com/henri.philipps/htracker/service"
 	"gitlab.com/henri.philipps/htracker/storage/memory"
 	"golang.org/x/exp/slog"
 )
 
-func TestExporter_Export(t *testing.T) {
+func ArchiveService_UpdateSiteArchive(t *testing.T) {
+
+	storage := memory.NewArchiveStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	svc := NewSiteArchive(storage)
 
 	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
+	site2 := &htracker.Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
 
 	content1 := []byte("This is Site1")
 	content2 := []byte("This is Site2")
@@ -26,7 +27,6 @@ func TestExporter_Export(t *testing.T) {
 
 	date1 := time.Now()
 	date2 := date1.Add(time.Second)
-	date3 := date2.Add(time.Second)
 
 	testcases := []struct {
 		name               string
@@ -47,32 +47,22 @@ func TestExporter_Export(t *testing.T) {
 		{name: "site1 unchanged", date: date2, site: site1, content: content1,
 			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
-		{name: "update site1", date: date3, site: site3, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: service.DiffText(string(content1), string(content1Updated)),
-			checkDateExpected: date3, updateDateExpected: date3},
+		{name: "update site1", date: date2, site: site1, content: content1Updated,
+			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: DiffText(string(content1), string(content1Updated)),
+			checkDateExpected: date2, updateDateExpected: date2},
 	}
 
-	ctx := context.Background()
-	exports := make(chan interface{}, 1)
-	storage := memory.NewArchiveStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
-	archive := service.NewSiteArchive(storage)
-	exporter := NewExporter(ctx, archive)
-
-	// run exporter in background
-	go func() {
-		err := exporter.Export(exports)
-		if err != nil {
-			t.Errorf("Exporter failed to export: %v", err)
-		}
-	}()
-
 	for _, tc := range testcases {
+		diff, err := svc.Update(&htracker.SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
+		if err != nil {
+			t.Fatalf("%s: db.UpdateSiteArchive failed: %v", tc.name, err)
+		}
 
-		// simulate sending result from scraper and wait a bit for the DB to get updated
-		exports <- &htracker.SiteArchive{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date, Content: tc.content, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(tc.content)))}
-		time.Sleep(time.Millisecond)
+		if want, got := tc.diffExpected, diff; want != got {
+			t.Fatalf("%s: Expected diff %s, got %s", tc.name, tc.diffExpected, diff)
+		}
 
-		sa, err := archive.Get(tc.site)
+		sa, err := svc.Get(tc.site)
 		if err != nil {
 			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
 		}
@@ -89,8 +79,13 @@ func TestExporter_Export(t *testing.T) {
 		if want, got := tc.checksum, sa.Checksum; want != got {
 			t.Fatalf("%s: Expected checksum %s, got %s", tc.name, want, got)
 		}
-		if want, got := tc.diffExpected, sa.Diff; want != got {
+		if want, got := tc.diffExpected, diff; want != got {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, want, got)
 		}
+	}
+
+	_, err := svc.Get(&htracker.Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
+	if !errors.Is(err, htracker.ErrNotExist) {
+		t.Fatalf("GetSiteArchive: Expected ErrNotExist error, got %v", err)
 	}
 }

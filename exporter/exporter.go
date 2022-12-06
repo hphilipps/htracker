@@ -14,18 +14,18 @@ import (
 // wrapping geziyor export.Exporter to avoid needing to import it in depending packages
 type Interface = export.Exporter
 
-// SiteDB is implementing exporter.Interface and exporting into a SiteDB
-type SiteDB struct {
-	ctx    context.Context
-	db     service.SiteArchive
-	logger slog.Logger
+// ArchiveSvc is implementing exporter.Interface and exporting into a SiteArchive service.
+type ArchiveSvc struct {
+	ctx        context.Context
+	archivesvc service.SiteArchive
+	logger     slog.Logger
 }
 
-func NewExporter(ctx context.Context, db service.SiteArchive) *SiteDB {
-	return &SiteDB{ctx: ctx, db: db, logger: *slog.New(slog.NewTextHandler(os.Stdout).WithGroup("exporter"))}
+func NewExporter(ctx context.Context, archive service.SiteArchive) *ArchiveSvc {
+	return &ArchiveSvc{ctx: ctx, archivesvc: archive, logger: *slog.New(slog.NewTextHandler(os.Stdout).WithGroup("exporter"))}
 }
 
-func (e *SiteDB) Export(exports chan interface{}) error {
+func (e *ArchiveSvc) Export(exports chan interface{}) error {
 	for res := range exports {
 
 		sarchive, ok := res.(*htracker.SiteArchive)
@@ -33,7 +33,7 @@ func (e *SiteDB) Export(exports chan interface{}) error {
 			return fmt.Errorf("expected response of type *siteArchive, got %T", res)
 		}
 
-		_, err := e.db.Update(sarchive)
+		_, err := e.archivesvc.Update(sarchive)
 		if err != nil {
 			e.logger.Error("failed to update site in db", err)
 		}

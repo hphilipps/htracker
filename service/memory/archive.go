@@ -44,7 +44,7 @@ func (db *MemoryDB) Update(sa *htracker.SiteArchive) (diff string, err error) {
 	return "", nil
 }
 
-// GetSiteArchive is returning metadata, checksum and content of a site in the DB identified by URL, filter and contentType.
+// Get is returning metadata, checksum and content of a site in the DB identified by URL, filter and contentType.
 func (db *MemoryDB) Get(site *htracker.Site) (sa *htracker.SiteArchive, err error) {
 
 	db.mu.Lock()
@@ -56,5 +56,5 @@ func (db *MemoryDB) Get(site *htracker.Site) (sa *htracker.SiteArchive, err erro
 		}
 	}
 
-	return &htracker.SiteArchive{}, service.ErrNotExist
+	return &htracker.SiteArchive{}, htracker.ErrNotExist
 }

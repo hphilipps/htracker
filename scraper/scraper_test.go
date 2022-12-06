@@ -12,7 +12,9 @@ import (
 	"github.com/geziyor/geziyor/client"
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/exporter"
-	"gitlab.com/henri.philipps/htracker/service/memory"
+	"gitlab.com/henri.philipps/htracker/service"
+	"gitlab.com/henri.philipps/htracker/storage/memory"
+	"golang.org/x/exp/slog"
 )
 
 const intTestVarName = "INTEGRATION_TESTS"
@@ -36,15 +38,16 @@ func TestScraper(t *testing.T) {
 		{URL: "http://quotes.toscrape.com/"},
 	}
 
-	db := memory.NewMemoryDB()
-	exp := exporter.NewExporter(context.Background(), db)
+	storage := memory.NewArchiveStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	archive := service.NewSiteArchive(storage)
+	exp := exporter.NewExporter(context.Background(), archive)
 	scraper := NewScraper(sites, WithExporters([]exporter.Interface{exp}))
 
 	date := time.Now()
 	scraper.Start()
 
 	for _, s := range sites {
-		sa, err := db.Get(s)
+		sa, err := archive.Get(s)
 
 		if err != nil {
 			t.Errorf("MemoryDB.GetSite() failed: %v", err)

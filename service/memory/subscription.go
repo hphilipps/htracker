@@ -17,7 +17,7 @@ func (db *MemoryDB) Subscribe(email string, site *htracker.Site) error {
 		if subscriber.Email == email {
 			for _, s := range subscriber.Sites {
 				if s.Equals(site) {
-					return fmt.Errorf("subscription already exists, %w", service.ErrAlreadyExists)
+					return fmt.Errorf("subscription already exists, %w", htracker.ErrAlreadyExists)
 				}
 			}
 			// subscription not found above - adding site to list of sites
@@ -43,7 +43,7 @@ func (db *MemoryDB) GetSitesBySubscriber(email string) (sites []*htracker.Site, 
 		}
 	}
 
-	return nil, service.ErrNotExist
+	return nil, htracker.ErrNotExist
 }
 
 // GetSubscribersBySite returns a list of subscribed emails for a given site.
@@ -92,11 +92,11 @@ func (db *MemoryDB) Unsubscribe(email string, site *htracker.Site) error {
 			}
 
 			return fmt.Errorf("unsubscribe: %s was not subscribed to url %s, filter %s, content type %s, %w",
-				email, site.URL, site.Filter, site.ContentType, service.ErrNotExist)
+				email, site.URL, site.Filter, site.ContentType, htracker.ErrNotExist)
 		}
 	}
 
-	return fmt.Errorf("unsubscribe: email %s not found - %w", email, service.ErrNotExist)
+	return fmt.Errorf("unsubscribe: email %s not found - %w", email, htracker.ErrNotExist)
 }
 
 func (db *MemoryDB) DeleteSubscriber(email string) error {
@@ -110,5 +110,5 @@ func (db *MemoryDB) DeleteSubscriber(email string) error {
 			return nil
 		}
 	}
-	return service.ErrNotExist
+	return htracker.ErrNotExist
 }

@@ -9,7 +9,8 @@ import (
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/exporter"
 	"gitlab.com/henri.philipps/htracker/scraper"
-	"gitlab.com/henri.philipps/htracker/service/memory"
+	"gitlab.com/henri.philipps/htracker/service"
+	"gitlab.com/henri.philipps/htracker/storage/memory"
 	"golang.org/x/exp/slog"
 )
 
@@ -22,8 +23,9 @@ func main() {
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	db := memory.NewMemoryDB()
-	exp := exporter.NewExporter(context.Background(), db)
+	storage := memory.NewArchiveStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	archive := service.NewSiteArchive(storage)
+	exp := exporter.NewExporter(context.Background(), archive)
 	site := &htracker.Site{
 		URL:         *urlFlag,
 		Filter:      *filterFlag,
@@ -44,7 +46,7 @@ func main() {
 
 	h1.Start()
 
-	sa, err := db.Get(site)
+	sa, err := archive.Get(site)
 	if err != nil {
 		logger.Error("db.Get failed", err)
 		os.Exit(1)
@@ -56,7 +58,7 @@ func main() {
 
 	h2.Start()
 
-	sa, err = db.Get(site)
+	sa, err = archive.Get(site)
 	if err != nil {
 		logger.Error("db.Get failed", err)
 		os.Exit(1)
