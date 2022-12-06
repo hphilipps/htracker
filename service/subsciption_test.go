@@ -1,106 +1,17 @@
-package memory
+package service
 
 import (
-	"crypto/md5"
-	"fmt"
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"gitlab.com/henri.philipps/htracker"
-	"gitlab.com/henri.philipps/htracker/service"
+	"gitlab.com/henri.philipps/htracker/storage/memory"
+	"golang.org/x/exp/slog"
 )
 
-func TestDB_Equal(t *testing.T) {
-	site1 := htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := htracker.Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
-
-	if want, got := false, site1.Equals(&site2); want != got {
-		t.Fatalf("Expected site1.Equals(site2) == %v, got %v", want, got)
-	}
-	if want, got := true, site1.Equals(&site3); want != got {
-		t.Fatalf("Expected site1.Equals(site3) == %v, got %v", want, got)
-	}
-}
-
-func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
-
-	db := NewMemoryDB()
-
-	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &htracker.Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-
-	content1 := []byte("This is Site1")
-	content2 := []byte("This is Site2")
-	content1Updated := []byte("This is Site1 updated")
-
-	date1 := time.Now()
-	date2 := date1.Add(time.Second)
-
-	testcases := []struct {
-		name               string
-		date               time.Time
-		site               *htracker.Site
-		content            []byte
-		checksum           string
-		diffExpected       string
-		checkDateExpected  time.Time
-		updateDateExpected time.Time
-	}{
-		{name: "add new site1", date: date1, site: site1, content: content1,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
-			checkDateExpected: date1, updateDateExpected: date1},
-		{name: "add new site2", date: date1, site: site2, content: content2,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content2))), diffExpected: "",
-			checkDateExpected: date1, updateDateExpected: date1},
-		{name: "site1 unchanged", date: date2, site: site1, content: content1,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
-			checkDateExpected: date2, updateDateExpected: date1},
-		{name: "update site1", date: date2, site: site1, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: service.DiffText(string(content1), string(content1Updated)),
-			checkDateExpected: date2, updateDateExpected: date2},
-	}
-
-	for _, tc := range testcases {
-		diff, err := db.Update(&htracker.SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
-		if err != nil {
-			t.Fatalf("%s: db.UpdateSiteArchive failed: %v", tc.name, err)
-		}
-
-		if want, got := tc.diffExpected, diff; want != got {
-			t.Fatalf("%s: Expected diff %s, got %s", tc.name, tc.diffExpected, diff)
-		}
-
-		sa, err := db.Get(tc.site)
-		if err != nil {
-			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
-		}
-
-		if want, got := tc.updateDateExpected, sa.LastUpdated; want != got {
-			t.Fatalf("%s: Expected lastUpdated %s, got %s", tc.name, want, got)
-		}
-		if want, got := tc.checkDateExpected, sa.LastChecked; want != got {
-			t.Fatalf("%s: Expected lastChecked %s, got %s", tc.name, want, got)
-		}
-		if want, got := string(tc.content), string(sa.Content); want != got {
-			t.Fatalf("%s: Expected content %s, got %s", tc.name, want, got)
-		}
-		if want, got := tc.checksum, sa.Checksum; want != got {
-			t.Fatalf("%s: Expected checksum %s, got %s", tc.name, want, got)
-		}
-		if want, got := tc.diffExpected, diff; want != got {
-			t.Fatalf("%s: Expected diff %s, got %s", tc.name, want, got)
-		}
-	}
-
-	_, err := db.Get(&htracker.Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
-	if err != htracker.ErrNotExist {
-		t.Fatalf("GetSiteArchive: Expected ErrNotExist error, got %v", err)
-	}
-}
-
-func TestMemoryDB_Subscribe(t *testing.T) {
+func TestSubscriptionSvc_Subscribe(t *testing.T) {
 
 	type args struct {
 		email string
@@ -130,16 +41,18 @@ func TestMemoryDB_Subscribe(t *testing.T) {
 		{name: "subscribe email1 to equal site again", args: args{email: email1, site: site3}, wantSites: []*htracker.Site{site1, site2}, wantErr: true},
 	}
 
-	db := NewMemoryDB()
+	logger := slog.New(slog.NewTextHandler(os.Stdout))
+	storage := memory.NewSubscriptionStorage(*logger)
+	svc := NewSubscriptionSvc(storage)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			if err := db.Subscribe(tt.args.email, tt.args.site); (err != nil) != tt.wantErr {
+			if err := svc.Subscribe(tt.args.email, tt.args.site); (err != nil) != tt.wantErr {
 				t.Errorf("MemoryDB.Subscribe() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			sites, err := db.GetSitesBySubscriber(tt.args.email)
+			sites, err := svc.GetSitesBySubscriber(tt.args.email)
 			if err != nil {
 				t.Errorf("MemoryDB.Subscribe() - validation with MemoryDB.GetSitesBySubscriber() failed: %v", err)
 			}
@@ -164,7 +77,7 @@ func TestMemoryDB_Subscribe(t *testing.T) {
 	}
 }
 
-func TestMemoryDB_Unsubscribe(t *testing.T) {
+func TestSubscriptionSvc_Unsubscribe(t *testing.T) {
 
 	type args struct {
 		email string
@@ -179,15 +92,17 @@ func TestMemoryDB_Unsubscribe(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	db := NewMemoryDB()
+	logger := slog.New(slog.NewTextHandler(os.Stdout))
+	storage := memory.NewSubscriptionStorage(*logger)
+	svc := NewSubscriptionSvc(storage)
 
-	db.Subscribe(email1, site1)
-	db.Subscribe(email1, site2)
-	db.Subscribe(email1, site3)
-	db.Subscribe(email2, site1)
-	db.Subscribe(email2, site2)
-	db.Subscribe(email3, site3)
-	db.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
+	svc.Subscribe(email1, site1)
+	svc.Subscribe(email1, site2)
+	svc.Subscribe(email1, site3)
+	svc.Subscribe(email2, site1)
+	svc.Subscribe(email2, site2)
+	svc.Subscribe(email3, site3)
+	svc.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
 
 	tests := []struct {
 		name      string
@@ -208,11 +123,11 @@ func TestMemoryDB_Unsubscribe(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			if err := db.Unsubscribe(tt.args.email, tt.args.site); (err != nil) != tt.wantErr {
+			if err := svc.Unsubscribe(tt.args.email, tt.args.site); (err != nil) != tt.wantErr {
 				t.Errorf("MemoryDB.Unsubscribe() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			sites, err := db.GetSitesBySubscriber(tt.args.email)
+			sites, err := svc.GetSitesBySubscriber(tt.args.email)
 			if err != nil && tt.wantEmail == true {
 				t.Errorf("MemoryDB.Unsubscribe() - validation with MemoryDB.GetSitesBySubscriber() failed: %v", err)
 			}
@@ -237,7 +152,7 @@ func TestMemoryDB_Unsubscribe(t *testing.T) {
 	}
 }
 
-func TestMemoryDB_GetSitesBySubscriber(t *testing.T) {
+func TestSubscriptionSvc_GetSitesBySubscriber(t *testing.T) {
 
 	type args struct {
 		email string
@@ -251,15 +166,17 @@ func TestMemoryDB_GetSitesBySubscriber(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	db := NewMemoryDB()
+	logger := slog.New(slog.NewTextHandler(os.Stdout))
+	storage := memory.NewSubscriptionStorage(*logger)
+	svc := NewSubscriptionSvc(storage)
 
-	db.Subscribe(email1, site1)
-	db.Subscribe(email1, site2)
-	db.Subscribe(email1, site3)
-	db.Subscribe(email2, site1)
-	db.Subscribe(email2, site2)
-	db.Subscribe(email3, site3)
-	db.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
+	svc.Subscribe(email1, site1)
+	svc.Subscribe(email1, site2)
+	svc.Subscribe(email1, site3)
+	svc.Subscribe(email2, site1)
+	svc.Subscribe(email2, site2)
+	svc.Subscribe(email3, site3)
+	svc.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
 
 	tests := []struct {
 		name      string
@@ -275,7 +192,7 @@ func TestMemoryDB_GetSitesBySubscriber(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSites, err := db.GetSitesBySubscriber(tt.args.email)
+			gotSites, err := svc.GetSitesBySubscriber(tt.args.email)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MemoryDB.GetSitesBySubscriber() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -289,7 +206,7 @@ func TestMemoryDB_GetSitesBySubscriber(t *testing.T) {
 	}
 }
 
-func TestMemoryDB_GetSubscribersBySite(t *testing.T) {
+func TestSubscriptionSvc_GetSubscribersBySite(t *testing.T) {
 
 	type args struct {
 		site *htracker.Site
@@ -303,15 +220,17 @@ func TestMemoryDB_GetSubscribersBySite(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	db := NewMemoryDB()
+	logger := slog.New(slog.NewTextHandler(os.Stdout))
+	storage := memory.NewSubscriptionStorage(*logger)
+	svc := NewSubscriptionSvc(storage)
 
-	db.Subscribe(email1, site1)
-	db.Subscribe(email1, site2)
-	db.Subscribe(email1, site3)
-	db.Subscribe(email2, site1)
-	db.Subscribe(email2, site2)
-	db.Subscribe(email3, site3)
-	db.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
+	svc.Subscribe(email1, site1)
+	svc.Subscribe(email1, site2)
+	svc.Subscribe(email1, site3)
+	svc.Subscribe(email2, site1)
+	svc.Subscribe(email2, site2)
+	svc.Subscribe(email3, site3)
+	svc.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
 
 	tests := []struct {
 		name       string
@@ -327,12 +246,16 @@ func TestMemoryDB_GetSubscribersBySite(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			gotEmails, err := db.GetSubscribersBySite(tt.args.site)
+			subscribers, err := svc.GetSubscribersBySite(tt.args.site)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MemoryDB.GetSubscribersBySite() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !(len(tt.wantEmails) == 0 && len(gotEmails) == 0) {
+			if !(len(tt.wantEmails) == 0 && len(subscribers) == 0) {
+				gotEmails := []string{}
+				for _, s := range subscribers {
+					gotEmails = append(gotEmails, s.Email)
+				}
 				if !reflect.DeepEqual(gotEmails, tt.wantEmails) {
 					t.Errorf("MemoryDB.GetSubscribersBySite() = %v, want %v", gotEmails, tt.wantEmails)
 				}
@@ -341,7 +264,7 @@ func TestMemoryDB_GetSubscribersBySite(t *testing.T) {
 	}
 }
 
-func TestMemoryDB_GetSubscribers(t *testing.T) {
+func TestSubscriptionSvc_GetSubscribers(t *testing.T) {
 
 	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
 	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
@@ -351,26 +274,32 @@ func TestMemoryDB_GetSubscribers(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	db := NewMemoryDB()
+	logger := slog.New(slog.NewTextHandler(os.Stdout))
+	storage := memory.NewSubscriptionStorage(*logger)
+	svc := NewSubscriptionSvc(storage)
 
-	db.Subscribe(email1, site1)
-	db.Subscribe(email1, site2)
-	db.Subscribe(email1, site3)
-	db.Subscribe(email2, site1)
-	db.Subscribe(email2, site2)
-	db.Subscribe(email3, site3)
-	db.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
+	svc.Subscribe(email1, site1)
+	svc.Subscribe(email1, site2)
+	svc.Subscribe(email1, site3)
+	svc.Subscribe(email2, site1)
+	svc.Subscribe(email2, site2)
+	svc.Subscribe(email3, site3)
+	svc.Unsubscribe(email3, site3) // should leave email3 with 0 subscriptions
 
-	emails, err := db.GetSubscribers()
+	subscribers, err := svc.GetSubscribers()
 	if err != nil {
 		t.Errorf("MemoryDB.GetSubscribers() failed: %v", err)
 	}
-	if !reflect.DeepEqual(emails, []string{email1, email2, email3}) {
-		t.Errorf("MemoryDB.GetSubscribers() expected %v, got %v", []string{email1, email2, email3}, emails)
+	gotEmails := []string{}
+	for _, sub := range subscribers {
+		gotEmails = append(gotEmails, sub.Email)
+	}
+	if !reflect.DeepEqual(gotEmails, []string{email1, email2, email3}) {
+		t.Errorf("MemoryDB.GetSubscribers() expected %v, got %v", []string{email1, email2, email3}, gotEmails)
 	}
 }
 
-func TestMemoryDB_DeleteSubscriber(t *testing.T) {
+func TestSubscriptionSvc_DeleteSubscriber(t *testing.T) {
 
 	type args struct {
 		email string
@@ -378,8 +307,11 @@ func TestMemoryDB_DeleteSubscriber(t *testing.T) {
 
 	email1 := "foo@bar.test"
 
-	db := NewMemoryDB()
-	err := db.Subscribe(email1, &htracker.Site{URL: "some.web.site.test/blah", Filter: "someFilter", ContentType: "text"})
+	logger := slog.New(slog.NewTextHandler(os.Stdout))
+	storage := memory.NewSubscriptionStorage(*logger)
+	svc := NewSubscriptionSvc(storage)
+
+	err := svc.Subscribe(email1, &htracker.Site{URL: "some.web.site.test/blah", Filter: "someFilter", ContentType: "text"})
 	if err != nil {
 		t.Fatalf("Failed to subscribe: %v", err)
 	}
@@ -397,16 +329,16 @@ func TestMemoryDB_DeleteSubscriber(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := db.DeleteSubscriber(tt.args.email); (err != nil) != tt.wantErr {
+			if err := svc.DeleteSubscriber(tt.args.email); (err != nil) != tt.wantErr {
 				t.Errorf("MemoryDB.DeleteSubscriber() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			emails, err := db.GetSubscribers()
+			subscribers, err := svc.GetSubscribers()
 			if err != nil {
 				t.Errorf("MemoryDB.GetSubscribers() failed: %v", err)
 			}
 			found := false
-			for _, e := range emails {
-				if (e == email1) == tt.wantExist {
+			for _, sub := range subscribers {
+				if (sub.Email == email1) == tt.wantExist {
 					found = true
 					break
 				}

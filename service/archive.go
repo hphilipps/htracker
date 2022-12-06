@@ -30,6 +30,7 @@ func (archive *siteArchive) Update(sa *htracker.SiteArchive) (diff string, err e
 	sarchive, err := archive.storage.Find(sa.Site)
 	if err != nil {
 		if errors.Is(err, htracker.ErrNotExist) {
+			// site archive not found - create new entry
 			if err := archive.storage.Add(sa); err != nil {
 				return "", fmt.Errorf("ArchiveStorage.Add() - %w", err)
 			}
