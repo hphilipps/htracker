@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"gitlab.com/henri.philipps/htracker"
-	"gitlab.com/henri.philipps/htracker/storage"
+	"gitlab.com/henri.philipps/htracker/service"
 )
 
 func TestDB_Equal(t *testing.T) {
@@ -58,12 +58,12 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
 		{name: "update site1", date: date2, site: site1, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: storage.DiffText(string(content1), string(content1Updated)),
+			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: service.DiffText(string(content1), string(content1Updated)),
 			checkDateExpected: date2, updateDateExpected: date2},
 	}
 
 	for _, tc := range testcases {
-		diff, err := db.UpdateSiteArchive(&htracker.SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
+		diff, err := db.Update(&htracker.SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
 		if err != nil {
 			t.Fatalf("%s: db.UpdateSiteArchive failed: %v", tc.name, err)
 		}
@@ -72,7 +72,7 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, tc.diffExpected, diff)
 		}
 
-		sa, err := db.GetSiteArchive(tc.site)
+		sa, err := db.Get(tc.site)
 		if err != nil {
 			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
 		}
@@ -94,8 +94,8 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 		}
 	}
 
-	_, err := db.GetSiteArchive(&htracker.Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
-	if err != storage.ErrNotExist {
+	_, err := db.Get(&htracker.Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
+	if err != service.ErrNotExist {
 		t.Fatalf("GetSiteArchive: Expected ErrNotExist error, got %v", err)
 	}
 }

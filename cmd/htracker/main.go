@@ -9,7 +9,7 @@ import (
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/exporter"
 	"gitlab.com/henri.philipps/htracker/scraper"
-	"gitlab.com/henri.philipps/htracker/storage/memory"
+	"gitlab.com/henri.philipps/htracker/service/memory"
 	"golang.org/x/exp/slog"
 )
 
@@ -44,9 +44,9 @@ func main() {
 
 	h1.Start()
 
-	sa, err := db.GetSiteArchive(site)
+	sa, err := db.Get(site)
 	if err != nil {
-		logger.Error("db.GetSiteArchive failed", err)
+		logger.Error("db.Get failed", err)
 		os.Exit(1)
 	}
 
@@ -56,9 +56,9 @@ func main() {
 
 	h2.Start()
 
-	sa, err = db.GetSiteArchive(site)
+	sa, err = db.Get(site)
 	if err != nil {
-		logger.Error("db.GetSiteArchive failed", err)
+		logger.Error("db.Get failed", err)
 		os.Exit(1)
 	}
 

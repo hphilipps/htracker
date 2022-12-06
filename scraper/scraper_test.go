@@ -12,7 +12,7 @@ import (
 	"github.com/geziyor/geziyor/client"
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/exporter"
-	"gitlab.com/henri.philipps/htracker/storage/memory"
+	"gitlab.com/henri.philipps/htracker/service/memory"
 )
 
 const intTestVarName = "INTEGRATION_TESTS"
@@ -44,7 +44,7 @@ func TestScraper(t *testing.T) {
 	scraper.Start()
 
 	for _, s := range sites {
-		sa, err := db.GetSiteArchive(s)
+		sa, err := db.Get(s)
 
 		if err != nil {
 			t.Errorf("MemoryDB.GetSite() failed: %v", err)

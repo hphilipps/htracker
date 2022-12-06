@@ -7,7 +7,7 @@ import (
 
 	"github.com/geziyor/geziyor/export"
 	"gitlab.com/henri.philipps/htracker"
-	"gitlab.com/henri.philipps/htracker/storage"
+	"gitlab.com/henri.philipps/htracker/service"
 	"golang.org/x/exp/slog"
 )
 
@@ -17,11 +17,11 @@ type Interface = export.Exporter
 // SiteDB is implementing exporter.Interface and exporting into a SiteDB
 type SiteDB struct {
 	ctx    context.Context
-	db     storage.SiteDB
+	db     service.SiteArchive
 	logger slog.Logger
 }
 
-func NewExporter(ctx context.Context, db storage.SiteDB) *SiteDB {
+func NewExporter(ctx context.Context, db service.SiteArchive) *SiteDB {
 	return &SiteDB{ctx: ctx, db: db, logger: *slog.New(slog.NewTextHandler(os.Stdout).WithGroup("exporter"))}
 }
 
@@ -33,7 +33,7 @@ func (e *SiteDB) Export(exports chan interface{}) error {
 			return fmt.Errorf("expected response of type *siteArchive, got %T", res)
 		}
 
-		_, err := e.db.UpdateSiteArchive(sarchive)
+		_, err := e.db.Update(sarchive)
 		if err != nil {
 			e.logger.Error("failed to update site in db", err)
 		}

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"gitlab.com/henri.philipps/htracker"
-	"gitlab.com/henri.philipps/htracker/storage"
-	"gitlab.com/henri.philipps/htracker/storage/memory"
+	"gitlab.com/henri.philipps/htracker/service"
+	"gitlab.com/henri.philipps/htracker/service/memory"
 )
 
 func TestExporter_Export(t *testing.T) {
@@ -46,7 +46,7 @@ func TestExporter_Export(t *testing.T) {
 			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
 		{name: "update site1", date: date3, site: site3, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: storage.DiffText(string(content1), string(content1Updated)),
+			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: service.DiffText(string(content1), string(content1Updated)),
 			checkDateExpected: date3, updateDateExpected: date3},
 	}
 
@@ -69,7 +69,7 @@ func TestExporter_Export(t *testing.T) {
 		exports <- &htracker.SiteArchive{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date, Content: tc.content, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(tc.content)))}
 		time.Sleep(time.Millisecond)
 
-		sa, err := db.GetSiteArchive(tc.site)
+		sa, err := db.Get(tc.site)
 		if err != nil {
 			t.Fatalf("%s: db.GetSiteArchive failed: %v", tc.name, err)
 		}
