@@ -1,4 +1,4 @@
-package htracker
+package scraper
 
 import (
 	"crypto/md5"
@@ -10,39 +10,16 @@ import (
 	"github.com/geziyor/geziyor"
 	"github.com/geziyor/geziyor/client"
 	"github.com/geziyor/geziyor/export"
+	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/exporter"
 	"golang.org/x/exp/slog"
 )
-
-// Site contains the meta data necessary to describe a web site to be scraped.
-type Site struct {
-	URL         string
-	Filter      string
-	ContentType string
-	Interval    time.Duration
-}
-
-// Equal is a method for comparing identifying metadata for this site with the given site.
-// The combination of URL, Filter and ContentType must be equal for sites to be equal.
-// It is not meant to compare the _content_ of web sites.
-func (s *Site) Equals(site *Site) bool {
-	return s.URL == site.URL && s.Filter == site.Filter && s.ContentType == site.ContentType
-}
-
-// SiteArchive is holding metadata, checksum and content of a scraped web site.
-type SiteArchive struct {
-	Site        *Site
-	LastUpdated time.Time
-	LastChecked time.Time
-	Content     []byte
-	Checksum    string
-	Diff        string
-}
 
 // Scraper is used to scrape web sites.
 type Scraper struct {
 	*geziyor.Geziyor
 
-	Sites  []*Site
+	Sites  []*htracker.Site
 	Logger *slog.Logger
 
 	/*** Geziyor Opts ***/
@@ -82,7 +59,7 @@ type Scraper struct {
 
 // newParseFunc is returning a new parser func, setup to parse the given site
 // and send the results as siteArchive to the Exports channel.
-func newParseFunc(site *Site, logger *slog.Logger) func(*geziyor.Geziyor, *client.Response) {
+func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyor, *client.Response) {
 	return func(g *geziyor.Geziyor, r *client.Response) {
 
 		var content []byte
@@ -107,7 +84,7 @@ func newParseFunc(site *Site, logger *slog.Logger) func(*geziyor.Geziyor, *clien
 			}
 		}
 
-		sa := &SiteArchive{
+		sa := &htracker.SiteArchive{
 			Site:        site,
 			LastChecked: time.Now(),
 			Content:     content,
@@ -119,7 +96,7 @@ func newParseFunc(site *Site, logger *slog.Logger) func(*geziyor.Geziyor, *clien
 }
 
 // NewScraper is returning a new Scraper to scrape given web sites.
-func NewScraper(sites []*Site, opts ...ScraperOpt) *Scraper {
+func NewScraper(sites []*htracker.Site, opts ...ScraperOpt) *Scraper {
 
 	scraper := &Scraper{
 		Sites:     sites,
@@ -178,7 +155,7 @@ func WithBrowserEndpoint(endpoint string) ScraperOpt {
 	}
 }
 
-func WithExporters(exporters []Exporter) ScraperOpt {
+func WithExporters(exporters []exporter.Interface) ScraperOpt {
 	return func(s *Scraper) {
 		s.Exporters = exporters
 	}

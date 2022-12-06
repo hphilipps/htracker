@@ -1,4 +1,4 @@
-package htracker
+package memory
 
 import (
 	"crypto/md5"
@@ -6,12 +6,15 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/storage"
 )
 
 func TestDB_Equal(t *testing.T) {
-	site1 := Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
+	site1 := htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := htracker.Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site3 := htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
 
 	if want, got := false, site1.Equals(&site2); want != got {
 		t.Fatalf("Expected site1.Equals(site2) == %v, got %v", want, got)
@@ -25,8 +28,8 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 
 	db := NewMemoryDB()
 
-	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := &htracker.Site{URL: "http://site1.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
 
 	content1 := []byte("This is Site1")
 	content2 := []byte("This is Site2")
@@ -38,7 +41,7 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 	testcases := []struct {
 		name               string
 		date               time.Time
-		site               *Site
+		site               *htracker.Site
 		content            []byte
 		checksum           string
 		diffExpected       string
@@ -55,12 +58,12 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
 		{name: "update site1", date: date2, site: site1, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: diffText(string(content1), string(content1Updated)),
+			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: storage.DiffText(string(content1), string(content1Updated)),
 			checkDateExpected: date2, updateDateExpected: date2},
 	}
 
 	for _, tc := range testcases {
-		diff, err := db.UpdateSiteArchive(&SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
+		diff, err := db.UpdateSiteArchive(&htracker.SiteArchive{tc.site, tc.date, tc.date, tc.content, tc.checksum, ""})
 		if err != nil {
 			t.Fatalf("%s: db.UpdateSiteArchive failed: %v", tc.name, err)
 		}
@@ -91,8 +94,8 @@ func TestMemoryDB_UpdateSiteArchive(t *testing.T) {
 		}
 	}
 
-	_, err := db.GetSiteArchive(&Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
-	if err != ErrNotExist {
+	_, err := db.GetSiteArchive(&htracker.Site{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
+	if err != storage.ErrNotExist {
 		t.Fatalf("GetSiteArchive: Expected ErrNotExist error, got %v", err)
 	}
 }
@@ -101,12 +104,12 @@ func TestMemoryDB_Subscribe(t *testing.T) {
 
 	type args struct {
 		email string
-		site  *Site
+		site  *htracker.Site
 	}
 
-	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
+	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site3 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
 
 	email1 := "email1@foo.test"
 	email2 := "email2@foo.test"
@@ -115,16 +118,16 @@ func TestMemoryDB_Subscribe(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		wantSites []*Site
+		wantSites []*htracker.Site
 		wantErr   bool
 	}{
-		{name: "subscribe email1 to site1", args: args{email: email1, site: site1}, wantSites: []*Site{site1}, wantErr: false},
-		{name: "subscribe email2 to site1", args: args{email: email2, site: site1}, wantSites: []*Site{site1}, wantErr: false},
-		{name: "subscribe email3 to site1", args: args{email: email3, site: site1}, wantSites: []*Site{site1}, wantErr: false},
-		{name: "subscribe email1 to site2", args: args{email: email1, site: site2}, wantSites: []*Site{site1, site2}, wantErr: false},
-		{name: "subscribe email2 to site2", args: args{email: email2, site: site2}, wantSites: []*Site{site1, site2}, wantErr: false},
-		{name: "subscribe email1 to same site again", args: args{email: email1, site: site1}, wantSites: []*Site{site1, site2}, wantErr: true},
-		{name: "subscribe email1 to equal site again", args: args{email: email1, site: site3}, wantSites: []*Site{site1, site2}, wantErr: true},
+		{name: "subscribe email1 to site1", args: args{email: email1, site: site1}, wantSites: []*htracker.Site{site1}, wantErr: false},
+		{name: "subscribe email2 to site1", args: args{email: email2, site: site1}, wantSites: []*htracker.Site{site1}, wantErr: false},
+		{name: "subscribe email3 to site1", args: args{email: email3, site: site1}, wantSites: []*htracker.Site{site1}, wantErr: false},
+		{name: "subscribe email1 to site2", args: args{email: email1, site: site2}, wantSites: []*htracker.Site{site1, site2}, wantErr: false},
+		{name: "subscribe email2 to site2", args: args{email: email2, site: site2}, wantSites: []*htracker.Site{site1, site2}, wantErr: false},
+		{name: "subscribe email1 to same site again", args: args{email: email1, site: site1}, wantSites: []*htracker.Site{site1, site2}, wantErr: true},
+		{name: "subscribe email1 to equal site again", args: args{email: email1, site: site3}, wantSites: []*htracker.Site{site1, site2}, wantErr: true},
 	}
 
 	db := NewMemoryDB()
@@ -165,12 +168,12 @@ func TestMemoryDB_Unsubscribe(t *testing.T) {
 
 	type args struct {
 		email string
-		site  *Site
+		site  *htracker.Site
 	}
 
-	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
+	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site3 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
 
 	email1 := "email1@foo.test"
 	email2 := "email2@foo.test"
@@ -189,18 +192,18 @@ func TestMemoryDB_Unsubscribe(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		wantSites []*Site
+		wantSites []*htracker.Site
 		wantErr   bool
 		wantEmail bool
 	}{
-		{name: "unsubscribe email1 from site1", args: args{email: email1, site: site1}, wantSites: []*Site{site2, site3}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email2 from site1", args: args{email: email2, site: site1}, wantSites: []*Site{site2}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email3 from not subscribed site1", args: args{email: email3, site: site1}, wantSites: []*Site{}, wantErr: true, wantEmail: true},
-		{name: "unsubscribe email1 from site2", args: args{email: email1, site: site2}, wantSites: []*Site{site3}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email2 from site2", args: args{email: email2, site: site2}, wantSites: []*Site{}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email1 from site2 again", args: args{email: email1, site: site2}, wantSites: []*Site{site3}, wantErr: true, wantEmail: true},
-		{name: "unsubscribe email3 from not subscribed site3", args: args{email: email3, site: site3}, wantSites: []*Site{}, wantErr: true, wantEmail: true},
-		{name: "unsubscribe nonexistent subscriber from site1", args: args{email: "nothing@foo.test", site: site1}, wantSites: []*Site{}, wantErr: true, wantEmail: false},
+		{name: "unsubscribe email1 from site1", args: args{email: email1, site: site1}, wantSites: []*htracker.Site{site2, site3}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email2 from site1", args: args{email: email2, site: site1}, wantSites: []*htracker.Site{site2}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email3 from not subscribed site1", args: args{email: email3, site: site1}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: true},
+		{name: "unsubscribe email1 from site2", args: args{email: email1, site: site2}, wantSites: []*htracker.Site{site3}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email2 from site2", args: args{email: email2, site: site2}, wantSites: []*htracker.Site{}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email1 from site2 again", args: args{email: email1, site: site2}, wantSites: []*htracker.Site{site3}, wantErr: true, wantEmail: true},
+		{name: "unsubscribe email3 from not subscribed site3", args: args{email: email3, site: site3}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: true},
+		{name: "unsubscribe nonexistent subscriber from site1", args: args{email: "nothing@foo.test", site: site1}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -240,9 +243,9 @@ func TestMemoryDB_GetSitesBySubscriber(t *testing.T) {
 		email string
 	}
 
-	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
+	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site3 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
 
 	email1 := "email1@foo.test"
 	email2 := "email2@foo.test"
@@ -261,13 +264,13 @@ func TestMemoryDB_GetSitesBySubscriber(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		wantSites []*Site
+		wantSites []*htracker.Site
 		wantErr   bool
 	}{
-		{name: "get email1 subscriptions", args: args{email: email1}, wantSites: []*Site{site1, site2, site3}, wantErr: false},
-		{name: "get email2 subscriptions", args: args{email: email2}, wantSites: []*Site{site1, site2}, wantErr: false},
-		{name: "get email3 subscriptions", args: args{email: email3}, wantSites: []*Site{}, wantErr: false},
-		{name: "get subscriptions of nonexistent email", args: args{email: "nonexisting@foo.test"}, wantSites: []*Site{}, wantErr: true},
+		{name: "get email1 subscriptions", args: args{email: email1}, wantSites: []*htracker.Site{site1, site2, site3}, wantErr: false},
+		{name: "get email2 subscriptions", args: args{email: email2}, wantSites: []*htracker.Site{site1, site2}, wantErr: false},
+		{name: "get email3 subscriptions", args: args{email: email3}, wantSites: []*htracker.Site{}, wantErr: false},
+		{name: "get subscriptions of nonexistent email", args: args{email: "nonexisting@foo.test"}, wantSites: []*htracker.Site{}, wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -289,12 +292,12 @@ func TestMemoryDB_GetSitesBySubscriber(t *testing.T) {
 func TestMemoryDB_GetSubscribersBySite(t *testing.T) {
 
 	type args struct {
-		site *Site
+		site *htracker.Site
 	}
 
-	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
+	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site3 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
 
 	email1 := "email1@foo.test"
 	email2 := "email2@foo.test"
@@ -319,7 +322,7 @@ func TestMemoryDB_GetSubscribersBySite(t *testing.T) {
 		{name: "get site1 subscribers", args: args{site: site1}, wantEmails: []string{email1, email2}, wantErr: false},
 		{name: "get site2 subscribers", args: args{site: site2}, wantEmails: []string{email1, email2}, wantErr: false},
 		{name: "get site3 subscribers", args: args{site: site3}, wantEmails: []string{email1}, wantErr: false},
-		{name: "get subscribers to nonexistent site", args: args{site: &Site{URL: "nowhere.test/foo"}}, wantEmails: []string{}, wantErr: false},
+		{name: "get subscribers to nonexistent site", args: args{site: &htracker.Site{URL: "nowhere.test/foo"}}, wantEmails: []string{}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -340,9 +343,9 @@ func TestMemoryDB_GetSubscribersBySite(t *testing.T) {
 
 func TestMemoryDB_GetSubscribers(t *testing.T) {
 
-	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
+	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site3 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "byte", Interval: time.Minute}
 
 	email1 := "email1@foo.test"
 	email2 := "email2@foo.test"
@@ -376,7 +379,7 @@ func TestMemoryDB_DeleteSubscriber(t *testing.T) {
 	email1 := "foo@bar.test"
 
 	db := NewMemoryDB()
-	err := db.Subscribe(email1, &Site{URL: "some.web.site.test/blah", Filter: "someFilter", ContentType: "text"})
+	err := db.Subscribe(email1, &htracker.Site{URL: "some.web.site.test/blah", Filter: "someFilter", ContentType: "text"})
 	if err != nil {
 		t.Fatalf("Failed to subscribe: %v", err)
 	}

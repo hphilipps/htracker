@@ -1,4 +1,4 @@
-package htracker
+package scraper
 
 import (
 	"context"
@@ -10,6 +10,9 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/geziyor/geziyor"
 	"github.com/geziyor/geziyor/client"
+	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/exporter"
+	"gitlab.com/henri.philipps/htracker/storage/memory"
 )
 
 const intTestVarName = "INTEGRATION_TESTS"
@@ -26,16 +29,16 @@ func runIntegrationTests() bool {
 
 func TestScraper(t *testing.T) {
 
-	sites := []*Site{
+	sites := []*htracker.Site{
 		{URL: "https://httpbin.org/anything"},
 		{URL: "http://quotes.toscrape.com/"},
 		{URL: "https://httpbin.org/anything"},
 		{URL: "http://quotes.toscrape.com/"},
 	}
 
-	db := NewMemoryDB()
-	exporter := NewExporter(context.Background(), db)
-	scraper := NewScraper(sites, WithExporters([]Exporter{exporter}))
+	db := memory.NewMemoryDB()
+	exp := exporter.NewExporter(context.Background(), db)
+	scraper := NewScraper(sites, WithExporters([]exporter.Interface{exp}))
 
 	date := time.Now()
 	scraper.Start()

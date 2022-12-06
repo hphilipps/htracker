@@ -1,4 +1,4 @@
-package htracker
+package exporter
 
 import (
 	"context"
@@ -6,13 +6,17 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/storage"
+	"gitlab.com/henri.philipps/htracker/storage/memory"
 )
 
 func TestExporter_Export(t *testing.T) {
 
-	site1 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
+	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	site3 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
 
 	content1 := []byte("This is Site1")
 	content2 := []byte("This is Site2")
@@ -25,7 +29,7 @@ func TestExporter_Export(t *testing.T) {
 	testcases := []struct {
 		name               string
 		date               time.Time
-		site               *Site
+		site               *htracker.Site
 		content            []byte
 		checksum           string
 		diffExpected       string
@@ -42,13 +46,13 @@ func TestExporter_Export(t *testing.T) {
 			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1))), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
 		{name: "update site1", date: date3, site: site3, content: content1Updated,
-			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: diffText(string(content1), string(content1Updated)),
+			checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1Updated))), diffExpected: storage.DiffText(string(content1), string(content1Updated)),
 			checkDateExpected: date3, updateDateExpected: date3},
 	}
 
 	ctx := context.Background()
 	exports := make(chan interface{}, 1)
-	db := NewMemoryDB()
+	db := memory.NewMemoryDB()
 	exporter := NewExporter(ctx, db)
 
 	// run exporter in background
@@ -62,7 +66,7 @@ func TestExporter_Export(t *testing.T) {
 	for _, tc := range testcases {
 
 		// simulate sending result from scraper and wait a bit for the DB to get updated
-		exports <- &SiteArchive{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date, Content: tc.content, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(tc.content)))}
+		exports <- &htracker.SiteArchive{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date, Content: tc.content, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(tc.content)))}
 		time.Sleep(time.Millisecond)
 
 		sa, err := db.GetSiteArchive(tc.site)

@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/exporter"
+	"gitlab.com/henri.philipps/htracker/scraper"
+	"gitlab.com/henri.philipps/htracker/storage/memory"
 	"golang.org/x/exp/slog"
 )
 
@@ -19,24 +22,24 @@ func main() {
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	db := htracker.NewMemoryDB()
-	exporter := htracker.NewExporter(context.Background(), db)
+	db := memory.NewMemoryDB()
+	exp := exporter.NewExporter(context.Background(), db)
 	site := &htracker.Site{
 		URL:         *urlFlag,
 		Filter:      *filterFlag,
 		ContentType: *contentTypeFlag,
 	}
 
-	h1 := htracker.NewScraper(
+	h1 := scraper.NewScraper(
 		[]*htracker.Site{site},
-		htracker.WithExporters([]htracker.Exporter{exporter}),
-		htracker.WithBrowserEndpoint("ws://localhost:3000"),
+		scraper.WithExporters([]exporter.Interface{exp}),
+		scraper.WithBrowserEndpoint("ws://localhost:3000"),
 	)
 
-	h2 := htracker.NewScraper(
+	h2 := scraper.NewScraper(
 		[]*htracker.Site{site},
-		htracker.WithExporters([]htracker.Exporter{exporter}),
-		htracker.WithBrowserEndpoint("ws://localhost:3000"),
+		scraper.WithExporters([]exporter.Interface{exp}),
+		scraper.WithBrowserEndpoint("ws://localhost:3000"),
 	)
 
 	h1.Start()
