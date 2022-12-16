@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/scraper"
 	"gitlab.com/henri.philipps/htracker/service"
 	"gitlab.com/henri.philipps/htracker/storage/memory"
 	"golang.org/x/exp/slog"
@@ -77,13 +78,9 @@ func TestWatcher_GenerateScrapeList(t *testing.T) {
 
 func TestWatcher_RunScrapers(t *testing.T) {
 	type fields struct {
-		archive        service.SiteArchive
-		subscriptions  service.Subscription
-		logger         slog.Logger
-		interval       time.Duration
-		scraperTimeout time.Duration
-		batchSize      int
-		threads        int
+		interval  time.Duration
+		batchSize int
+		threads   int
 	}
 	type args struct {
 		sites []*htracker.Site
@@ -103,25 +100,26 @@ func TestWatcher_RunScrapers(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{name: "scrape 1, threads: 1, batch size: 1", fields: fields{scraperTimeout: time.Minute, batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 2, threads: 1, batch size: 1", fields: fields{scraperTimeout: time.Minute, batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
-		{name: "scrape 1, threads: 2, batch size: 1", fields: fields{scraperTimeout: time.Minute, batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 1, threads: 1, batch size: 2", fields: fields{scraperTimeout: time.Minute, batchSize: 2, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 1, threads: 2, batch size: 2", fields: fields{scraperTimeout: time.Minute, batchSize: 2, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 2, threads: 2, batch size: 1", fields: fields{scraperTimeout: time.Minute, batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
-		{name: "scrape 4, threads: 4, batch size: 2", fields: fields{scraperTimeout: time.Minute, batchSize: 2, threads: 4, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}}},
-		{name: "scrape 4, with timeout", fields: fields{scraperTimeout: time.Minute, batchSize: 1, threads: 1, interval: time.Millisecond}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}}, wantErr: true},
+		{name: "scrape 0, threads: 1, batch size: 1", fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{}}},
+		{name: "scrape 1, threads: 1, batch size: 1", fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 2, threads: 1, batch size: 1", fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
+		{name: "scrape 1, threads: 2, batch size: 1", fields: fields{batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 1, threads: 1, batch size: 2", fields: fields{batchSize: 2, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 1, threads: 2, batch size: 2", fields: fields{batchSize: 2, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 2, threads: 2, batch size: 1", fields: fields{batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
+		{name: "scrape 4, threads: 4, batch size: 2", fields: fields{batchSize: 2, threads: 4, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}}},
+		{name: "scrape 4, with timeout", fields: fields{batchSize: 1, threads: 1, interval: time.Millisecond}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &Watcher{
-				archive:        service.NewSiteArchive(memory.NewSiteStorage(logger)),
-				logger:         logger,
-				interval:       tt.fields.interval,
-				scraperTimeout: tt.fields.scraperTimeout,
-				batchSize:      tt.fields.batchSize,
-				threads:        tt.fields.threads,
-			}
+			w := NewWatcher(
+				service.NewSiteArchive(memory.NewSiteStorage(logger)), nil,
+				WithLogger(logger),
+				WithInterval(tt.fields.interval),
+				WithBatchSize(tt.fields.batchSize),
+				WithThreads(tt.fields.threads),
+				WithScraperOpts(scraper.WithTimeout(time.Minute)))
+
 			err := w.RunScrapers(tt.args.sites)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Watcher.RunScrapers() error = %v, wantErr %v", err, tt.wantErr)

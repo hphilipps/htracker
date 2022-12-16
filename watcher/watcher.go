@@ -15,14 +15,13 @@ import (
 
 // Watcher is scraping subscribed sites in regular intervals.
 type Watcher struct {
-	archive         service.SiteArchive
-	subscriptions   service.Subscription
-	logger          *slog.Logger
-	interval        time.Duration
-	batchSize       int
-	threads         int
-	scraperTimeout  time.Duration
-	browserEndpoint string
+	archive       service.SiteArchive
+	subscriptions service.Subscription
+	logger        *slog.Logger
+	interval      time.Duration
+	batchSize     int
+	threads       int
+	scraperOpts   []scraper.ScraperOpt
 }
 
 // NewWatcher is returning a new Watcher instance.
@@ -32,6 +31,8 @@ func NewWatcher(archive service.SiteArchive, subscriptions service.Subscription,
 		subscriptions: subscriptions,
 		logger:        slog.Default(),
 		interval:      time.Hour,
+		batchSize:     4,
+		threads:       2,
 	}
 
 	for _, opt := range opts {
@@ -44,11 +45,38 @@ func NewWatcher(archive service.SiteArchive, subscriptions service.Subscription,
 // Opt is a functional option for a watcher.
 type Opt func(*Watcher)
 
-// WithBrowserEndpoint configures a Watcher to connect to the given
-// chrome instance for rendering websites.
-func WithBrowserEndpoint(endpoint string) Opt {
+// WithInterval sets the interval between scrape runs.
+func WithInterval(interval time.Duration) Opt {
 	return func(w *Watcher) {
-		w.browserEndpoint = endpoint
+		w.interval = interval
+	}
+}
+
+// WithScraperOpts sets options for the scrapers that are launched with RunScrapers().
+func WithScraperOpts(opts ...scraper.ScraperOpt) Opt {
+	return func(w *Watcher) {
+		w.scraperOpts = opts
+	}
+}
+
+// WithBatchSize sets the size of the batch of sites given to a Scraper instance for processing.
+func WithBatchSize(bs int) Opt {
+	return func(w *Watcher) {
+		w.batchSize = bs
+	}
+}
+
+// WithThreads sets the number of scrapers working in parallel.
+func WithThreads(threads int) Opt {
+	return func(w *Watcher) {
+		w.threads = threads
+	}
+}
+
+// WithLogger sets the logger.
+func WithLogger(logger *slog.Logger) Opt {
+	return func(w *Watcher) {
+		w.logger = logger
 	}
 }
 
@@ -105,13 +133,16 @@ func (w *Watcher) RunScrapers(sites []*htracker.Site) error {
 						return
 					}
 
-					w.logger.Debug("watcher: scraper starting", "worker", n)
-					scraper.NewScraper(batch,
+					scraper := scraper.NewScraper(batch,
 						scraper.WithExporters(exporters),
-						scraper.WithBrowserEndpoint(w.browserEndpoint),
 						scraper.WithLogger(w.logger),
-						scraper.WithTimeout(w.scraperTimeout),
-					).Start()
+					)
+					for _, opt := range w.scraperOpts {
+						opt(scraper)
+					}
+
+					w.logger.Debug("watcher: scraper starting", "worker", n)
+					scraper.Start()
 					w.logger.Debug("watcher: scraper finished", "worker", n)
 
 				case <-ctx.Done():
