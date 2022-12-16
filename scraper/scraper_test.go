@@ -34,8 +34,8 @@ func TestScraper(t *testing.T) {
 	sites := []*htracker.Site{
 		{URL: "https://httpbin.org/anything"},
 		{URL: "http://quotes.toscrape.com/"},
-		{URL: "https://httpbin.org/anything"},
-		{URL: "http://quotes.toscrape.com/"},
+		{URL: "https://httpbin.org/anything/1"},
+		{URL: "https://httpbin.org/anything/2"},
 	}
 
 	storage := memory.NewSiteStorage(*slog.New(slog.NewTextHandler(os.Stdout)))

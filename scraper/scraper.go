@@ -33,13 +33,6 @@ type Scraper struct {
 	// For example: ws://localhost:3000
 	BrowserEndpoint string
 
-	// Concurrent requests limit
-	ConcurrentRequests int
-
-	// Concurrent requests per domain limit. Uses request.URL.Host
-	// Subdomains are different than top domain
-	ConcurrentRequestsPerDomain int
-
 	// For extracting data
 	Exporters []export.Exporter
 
@@ -109,27 +102,24 @@ func NewScraper(sites []*htracker.Site, opts ...ScraperOpt) *Scraper {
 	}
 
 	gcfg := geziyor.Options{
-		AllowedDomains:              scraper.AllowedDomains,
-		BrowserEndpoint:             scraper.BrowserEndpoint,
-		ConcurrentRequests:          scraper.ConcurrentRequests,
-		ConcurrentRequestsPerDomain: scraper.ConcurrentRequestsPerDomain,
-		Exporters:                   scraper.Exporters,
-		MaxBodySize:                 scraper.MaxBodySize,
-		RequestsPerSecond:           scraper.RequestsPerSecond,
-		Timeout:                     scraper.Timeout,
-		UserAgent:                   scraper.UserAgent,
+		AllowedDomains:    scraper.AllowedDomains,
+		BrowserEndpoint:   scraper.BrowserEndpoint,
+		Exporters:         scraper.Exporters,
+		MaxBodySize:       scraper.MaxBodySize,
+		RequestsPerSecond: scraper.RequestsPerSecond,
+		Timeout:           scraper.Timeout,
+		UserAgent:         scraper.UserAgent,
+
+		// we do our own deduplication in the watcher
+		URLRevisitEnabled: true,
 	}
 
-	if scraper.BrowserEndpoint != "" {
-		gcfg.StartRequestsFunc = func(g *geziyor.Geziyor) {
-			for _, s := range scraper.Sites {
+	gcfg.StartRequestsFunc = func(g *geziyor.Geziyor) {
+		for _, s := range scraper.Sites {
+			if s.UseChrome {
 				// using external chrome browser for rendering java script
 				g.GetRendered(s.URL, newParseFunc(s, scraper.Logger))
-			}
-		}
-	} else {
-		gcfg.StartRequestsFunc = func(g *geziyor.Geziyor) {
-			for _, s := range scraper.Sites {
+			} else {
 				// directly scrape the plain web site content without rendering JS
 				g.Get(s.URL, newParseFunc(s, scraper.Logger))
 			}
@@ -152,6 +142,12 @@ func WithAllowedDomains(domains []string) ScraperOpt {
 func WithBrowserEndpoint(endpoint string) ScraperOpt {
 	return func(s *Scraper) {
 		s.BrowserEndpoint = endpoint
+	}
+}
+
+func WithTimeout(timeout time.Duration) ScraperOpt {
+	return func(s *Scraper) {
+		s.Timeout = timeout
 	}
 }
 

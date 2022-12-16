@@ -13,8 +13,8 @@ import (
 type Subscription interface {
 	Subscribe(email string, site *htracker.Site) error
 	GetSitesBySubscriber(email string) (sites []*htracker.Site, err error)
-	GetSubscribersBySite(site *htracker.Site) (emails []string, err error)
-	GetSubscribers() (emails []string, err error)
+	GetSubscribersBySite(site *htracker.Site) (subscribers []*Subscriber, err error)
+	GetSubscribers() (subscribers []*Subscriber, err error)
 	Unsubscribe(email string, site *htracker.Site) error
 	DeleteSubscriber(email string) error
 }
@@ -25,15 +25,18 @@ type Subscriber struct {
 	Sites []*htracker.Site
 }
 
-// NewSubscriptionSvc is returning a new SubscriptionService using the given storage backend.
-func NewSubscriptionSvc(storage storage.SubscriptionStorage) *subscriptionSvc {
-	return &subscriptionSvc{storage: storage}
-}
-
 // subscriptionSvc is implementing the Subscription service interface.
 type subscriptionSvc struct {
 	storage storage.SubscriptionStorage
 	logger  slog.Logger
+}
+
+// compile time check of interface implementation
+var _ Subscription = &subscriptionSvc{}
+
+// NewSubscriptionSvc is returning a new SubscriptionService using the given storage backend.
+func NewSubscriptionSvc(storage storage.SubscriptionStorage) *subscriptionSvc {
+	return &subscriptionSvc{storage: storage}
 }
 
 // Subscribe is adding a subscription for the given email and will return

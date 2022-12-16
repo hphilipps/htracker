@@ -7,6 +7,7 @@ type Site struct {
 	URL         string
 	Filter      string
 	ContentType string
+	UseChrome   bool
 	Interval    time.Duration
 }
 
@@ -14,7 +15,7 @@ type Site struct {
 // The combination of URL, Filter and ContentType must be equal for sites to be equal.
 // It is not meant to compare the _content_ of web sites.
 func (s *Site) Equals(site *Site) bool {
-	return s.URL == site.URL && s.Filter == site.Filter && s.ContentType == site.ContentType
+	return s.URL == site.URL && s.Filter == site.Filter && s.ContentType == site.ContentType && s.UseChrome == site.UseChrome
 }
 
 // SiteContent is holding metadata, checksum, content and diff to previous version of a scraped web site.

@@ -15,6 +15,17 @@
 2. feed - serves feed of changes for subscribers
 3. push news - push news out to subscribers
 
+## Watcher
+
+1. Frequently, go through all subscribers, generate list of sites that need to be scraped and deduplicate them
+2. Scrape sites with similar filters/content types in batches
+    1. Maybe: Notify notifier?
+
+## Notifier
+
+1. Frequently, go through all subscriptions and notify if last notification is older than notification period (deduplicate by subscriber)
+2. Maybe: send notifications immediately, if triggered by watcher? 
+
 ## Scrape
 
 1. NewScraper + opts per set of URLs
