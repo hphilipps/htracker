@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 
 func ArchiveService_UpdateSiteArchive(t *testing.T) {
 
-	storage := memory.NewSiteStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	storage := memory.NewSiteStorage(slog.Default())
 	svc := NewSiteArchive(storage)
 
 	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}

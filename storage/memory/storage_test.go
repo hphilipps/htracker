@@ -3,7 +3,6 @@ package memory
 import (
 	"crypto/md5"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -55,7 +54,7 @@ func Test_memDB_Find(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db := &memDB{
 				archive: tt.fields.archive,
-				logger:  *slog.New(slog.NewTextHandler(os.Stdout)),
+				logger:  slog.Default(),
 			}
 			gotContent, err := db.Find(tt.args.site)
 			if (err != nil) != tt.wantErr {
@@ -101,7 +100,7 @@ func Test_memDB_Add(t *testing.T) {
 
 	db := &memDB{
 		archive: []*htracker.SiteContent{},
-		logger:  *slog.New(slog.NewTextHandler(os.Stdout)),
+		logger:  slog.Default(),
 	}
 
 	for _, tt := range tests {

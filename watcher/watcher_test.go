@@ -45,12 +45,12 @@ func TestWatcher_GenerateScrapeList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := slog.New(slog.NewTextHandler(os.Stdout))
-			db := memory.NewSubscriptionStorage(*logger)
+			logger := slog.Default()
+			db := memory.NewSubscriptionStorage(logger)
 			svc := service.NewSubscriptionSvc(db)
 			w := &Watcher{
 				subscriptions: svc,
-				logger:        *logger,
+				logger:        logger,
 			}
 
 			for _, s := range tt.subscribers {
@@ -115,8 +115,8 @@ func TestWatcher_RunScrapers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := &Watcher{
-				archive:        service.NewSiteArchive(memory.NewSiteStorage(*logger)),
-				logger:         *logger,
+				archive:        service.NewSiteArchive(memory.NewSiteStorage(logger)),
+				logger:         logger,
 				interval:       tt.fields.interval,
 				scraperTimeout: tt.fields.scraperTimeout,
 				batchSize:      tt.fields.batchSize,

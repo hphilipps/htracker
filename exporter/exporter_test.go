@@ -2,7 +2,6 @@ package exporter
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -52,7 +51,7 @@ func TestExporter_Export(t *testing.T) {
 
 	ctx := context.Background()
 	exports := make(chan interface{}, 1)
-	storage := memory.NewSiteStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	storage := memory.NewSiteStorage(slog.Default())
 	archive := service.NewSiteArchive(storage)
 	exporter := NewExporter(ctx, archive)
 

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -41,8 +40,8 @@ func TestSubscriptionSvc_Subscribe(t *testing.T) {
 		{name: "subscribe email1 to equal site again", args: args{email: email1, site: site3}, wantSites: []*htracker.Site{site1, site2}, wantErr: true},
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	storage := memory.NewSubscriptionStorage(*logger)
+	logger := slog.Default()
+	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
 	for _, tt := range tests {
@@ -92,8 +91,8 @@ func TestSubscriptionSvc_Unsubscribe(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	storage := memory.NewSubscriptionStorage(*logger)
+	logger := slog.Default()
+	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
 	svc.Subscribe(email1, site1)
@@ -166,8 +165,8 @@ func TestSubscriptionSvc_GetSitesBySubscriber(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	storage := memory.NewSubscriptionStorage(*logger)
+	logger := slog.Default()
+	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
 	svc.Subscribe(email1, site1)
@@ -220,8 +219,8 @@ func TestSubscriptionSvc_GetSubscribersBySite(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	storage := memory.NewSubscriptionStorage(*logger)
+	logger := slog.Default()
+	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
 	svc.Subscribe(email1, site1)
@@ -274,8 +273,8 @@ func TestSubscriptionSvc_GetSubscribers(t *testing.T) {
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	storage := memory.NewSubscriptionStorage(*logger)
+	logger := slog.Default()
+	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
 	svc.Subscribe(email1, site1)
@@ -307,8 +306,8 @@ func TestSubscriptionSvc_DeleteSubscriber(t *testing.T) {
 
 	email1 := "foo@bar.test"
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	storage := memory.NewSubscriptionStorage(*logger)
+	logger := slog.Default()
+	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
 	err := svc.Subscribe(email1, &htracker.Site{URL: "some.web.site.test/blah", Filter: "someFilter", ContentType: "text"})

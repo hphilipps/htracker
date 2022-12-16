@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 type Watcher struct {
 	archive         service.SiteArchive
 	subscriptions   service.Subscription
-	logger          slog.Logger
+	logger          *slog.Logger
 	interval        time.Duration
 	batchSize       int
 	threads         int
@@ -27,15 +26,22 @@ type Watcher struct {
 }
 
 // NewWatcher is returning a new Watcher instance.
-func NewWatcher(archive service.SiteArchive, subscriptions service.Subscription) *Watcher {
-	return &Watcher{
+func NewWatcher(archive service.SiteArchive, subscriptions service.Subscription, opts ...Opt) *Watcher {
+	watcher := &Watcher{
 		archive:       archive,
 		subscriptions: subscriptions,
-		logger:        *slog.New(slog.NewTextHandler(os.Stdout)),
+		logger:        slog.Default(),
 		interval:      time.Hour,
 	}
+
+	for _, opt := range opts {
+		opt(watcher)
+	}
+
+	return watcher
 }
 
+// Opt is a functional option for a watcher.
 type Opt func(*Watcher)
 
 // WithBrowserEndpoint configures a Watcher to connect to the given
@@ -102,8 +108,8 @@ func (w *Watcher) RunScrapers(sites []*htracker.Site) error {
 					w.logger.Debug("watcher: scraper starting", "worker", n)
 					scraper.NewScraper(batch,
 						scraper.WithExporters(exporters),
-						scraper.WithBrowserEndpoint("ws://localhost:3000"),
-						scraper.WithLogger(&w.logger),
+						scraper.WithBrowserEndpoint(w.browserEndpoint),
+						scraper.WithLogger(w.logger),
 						scraper.WithTimeout(w.scraperTimeout),
 					).Start()
 					w.logger.Debug("watcher: scraper finished", "worker", n)

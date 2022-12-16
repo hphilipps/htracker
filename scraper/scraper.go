@@ -3,7 +3,6 @@ package scraper
 import (
 	"crypto/md5"
 	"fmt"
-	"os"
 	"regexp"
 	"time"
 
@@ -93,7 +92,7 @@ func NewScraper(sites []*htracker.Site, opts ...ScraperOpt) *Scraper {
 
 	scraper := &Scraper{
 		Sites:     sites,
-		Logger:    slog.New(slog.NewTextHandler(os.Stdout).WithGroup("scraper")),
+		Logger:    slog.Default(),
 		UserAgent: "HTracker/Geziyor 1.0",
 	}
 

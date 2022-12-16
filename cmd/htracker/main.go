@@ -25,8 +25,8 @@ func main() {
 
 	flag.Parse()
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout))
-	storage := memory.NewSiteStorage(*slog.New(slog.NewTextHandler(os.Stdout)))
+	logger := slog.Default()
+	storage := memory.NewSiteStorage(logger)
 	archive := service.NewSiteArchive(storage)
 	exp := exporter.NewExporter(context.Background(), archive)
 	site := &htracker.Site{
@@ -37,7 +37,7 @@ func main() {
 
 	opts := []scraper.ScraperOpt{scraper.WithExporters([]exporter.Interface{exp})}
 	if *renderWithChromeFlag {
-		opts = append(opts, scraper.WithBrowserEndpoint("ws://localhost:3000"))
+		opts = append(opts, scraper.WithBrowserEndpoint(*chromeWSFlag))
 	}
 
 	h1 := scraper.NewScraper(
@@ -54,7 +54,7 @@ func main() {
 
 	sc, err := archive.Get(site)
 	if err != nil {
-		logger.Error("db.Get failed", err)
+		logger.Error("db.Get() failed", err)
 		os.Exit(1)
 	}
 
@@ -67,7 +67,7 @@ func main() {
 
 	sc, err = archive.Get(site)
 	if err != nil {
-		logger.Error("db.Get failed", err)
+		logger.Error("db.Get() failed", err)
 		os.Exit(1)
 	}
 

@@ -13,17 +13,17 @@ import (
 type memDB struct {
 	archive     []*htracker.SiteContent
 	subscribers []*storage.Subscriber
-	logger      slog.Logger
+	logger      *slog.Logger
 	mu          sync.Mutex
 }
 
 // NewSiteStorage returns a new in-memory site content storage which can be used by a SiteArchive service.
-func NewSiteStorage(logger slog.Logger) *memDB {
+func NewSiteStorage(logger *slog.Logger) *memDB {
 	return &memDB{logger: logger}
 }
 
 // NewSubscriptionStorage returns a new in-memory SubscriptionStorage which can be used by a Subscription service.
-func NewSubscriptionStorage(logger slog.Logger) *memDB {
+func NewSubscriptionStorage(logger *slog.Logger) *memDB {
 	return &memDB{logger: logger}
 }
 
