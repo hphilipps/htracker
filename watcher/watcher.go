@@ -181,3 +181,26 @@ func (w *Watcher) RunScrapers(sites []*htracker.Site) error {
 
 	return nil
 }
+
+func (w *Watcher) Start(ctx context.Context) error {
+
+	w.logger.Info("Starting Watcher")
+
+	ticker := time.NewTicker(w.interval)
+
+	for {
+		select {
+		case <-ticker.C:
+			sites, err := w.GenerateScrapeList()
+			if err != nil {
+				return fmt.Errorf("watcher.GenerateScrapeList(): %w", err)
+			}
+
+			if err := w.RunScrapers(sites); err != nil {
+				w.logger.Error("Watcher: RunScrapers() failed", err)
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}

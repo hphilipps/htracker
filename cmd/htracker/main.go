@@ -12,6 +12,7 @@ import (
 	"gitlab.com/henri.philipps/htracker/scraper"
 	"gitlab.com/henri.philipps/htracker/service"
 	"gitlab.com/henri.philipps/htracker/storage/memory"
+	"gitlab.com/henri.philipps/htracker/watcher"
 	"golang.org/x/exp/slog"
 )
 
@@ -84,4 +85,26 @@ func main() {
 			break
 		}
 	}
+
+	subscriptionSvc := service.NewSubscriptionSvc(storage)
+
+	subscriptionSvc.Subscribe("email1", &htracker.Site{URL: "http://httpbin.org/anything/1"})
+	subscriptionSvc.Subscribe("email1", &htracker.Site{URL: "http://httpbin.org/anything/2"})
+	subscriptionSvc.Subscribe("email2", &htracker.Site{URL: "http://httpbin.org/anything/2"})
+
+	dbgLogger := slog.New(slog.HandlerOptions{Level: slog.DebugLevel}.NewTextHandler(os.Stdout))
+
+	w := watcher.NewWatcher(archive, subscriptionSvc, watcher.WithInterval(5*time.Second), watcher.WithLogger(dbgLogger))
+
+	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+	if err := w.Start(ctx); err != nil {
+		logger.Error("Watcher", err)
+	}
+
+	sa, err := archive.Get(&htracker.Site{URL: "http://httpbin.org/anything/2"})
+	if err != nil {
+		logger.Error("ArchiveService", err)
+	}
+
+	fmt.Printf("LU: %v: %v\n", sa.LastUpdated, sa.Diff)
 }
