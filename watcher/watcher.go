@@ -106,22 +106,21 @@ func (w *Watcher) GenerateScrapeList() (sites []*htracker.Site, err error) {
 }
 
 // RunScrapers is starting up worker threads to scrape the given sites and waits for them to finish.
-func (w *Watcher) RunScrapers(sites []*htracker.Site) error {
-	ctx, _ := context.WithTimeout(context.Background(), w.interval)
-	//done := make(chan struct{}, w.threads)
+// When all scrapers finished there still might be exporters processing the results asynchronously.
+func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error {
+	tctx, _ := context.WithTimeout(ctx, w.interval)
 	wg := &sync.WaitGroup{}
 
-	exporters := []exporter.Interface{exporter.NewExporter(ctx, w.archive)}
+	exporters := []exporter.Interface{exporter.NewExporter(tctx, w.archive)}
 	batches := make(chan []*htracker.Site, w.threads)
 
 	// spin up workers
 	for i := 0; i < w.threads; i++ {
 
-		// capture loop var for use in closure
-		n := i
-
+		n := i // capture loop var for use in closure
 		wg.Add(1)
 		w.logger.Debug("watcher: starting worker", "worker", i)
+
 		go func() {
 			defer wg.Done()
 			for {
@@ -145,8 +144,8 @@ func (w *Watcher) RunScrapers(sites []*htracker.Site) error {
 					scraper.Start()
 					w.logger.Debug("watcher: scraper finished", "worker", n)
 
-				case <-ctx.Done():
-					w.logger.Debug("watcher: worker canceled - shutting down", "worker", n, "error", ctx.Err())
+				case <-tctx.Done():
+					w.logger.Debug("watcher: worker canceled - shutting down", "worker", n, "error", tctx.Err())
 					return
 				}
 			}
@@ -164,9 +163,9 @@ func (w *Watcher) RunScrapers(sites []*htracker.Site) error {
 		if count == w.batchSize || i == last {
 			select {
 			case batches <- batch:
-			case <-ctx.Done():
-				w.logger.Debug("watcher: RunScrapers() canceled", "error", ctx.Err())
-				return ctx.Err()
+			case <-tctx.Done():
+				w.logger.Debug("watcher: RunScrapers() canceled", "error", tctx.Err())
+				return tctx.Err()
 			}
 			count = 0
 			batch = []*htracker.Site{}
@@ -182,23 +181,27 @@ func (w *Watcher) RunScrapers(sites []*htracker.Site) error {
 	return nil
 }
 
+// Start is making the watcher scrape all subscribed websites in regular intervals.
+// It can be stopped by canceling the given context.
 func (w *Watcher) Start(ctx context.Context) error {
 
-	w.logger.Info("Starting Watcher")
+	w.logger.Info("Watcher started", "interval", w.interval, "threads", w.threads, "batchSize", w.batchSize)
 
 	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
 
 	for {
+		sites, err := w.GenerateScrapeList()
+		if err != nil {
+			return fmt.Errorf("watcher.GenerateScrapeList(): %w", err)
+		}
+
+		if err := w.RunScrapers(ctx, sites); err != nil {
+			w.logger.Error("Watcher: RunScrapers() failed", err)
+		}
+
 		select {
 		case <-ticker.C:
-			sites, err := w.GenerateScrapeList()
-			if err != nil {
-				return fmt.Errorf("watcher.GenerateScrapeList(): %w", err)
-			}
-
-			if err := w.RunScrapers(sites); err != nil {
-				w.logger.Error("Watcher: RunScrapers() failed", err)
-			}
 		case <-ctx.Done():
 			return ctx.Err()
 		}

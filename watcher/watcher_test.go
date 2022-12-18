@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"testing"
@@ -120,7 +121,7 @@ func TestWatcher_RunScrapers(t *testing.T) {
 				WithThreads(tt.fields.threads),
 				WithScraperOpts(scraper.WithTimeout(time.Minute)))
 
-			err := w.RunScrapers(tt.args.sites)
+			err := w.RunScrapers(context.Background(), tt.args.sites)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Watcher.RunScrapers() error = %v, wantErr %v", err, tt.wantErr)
 			}

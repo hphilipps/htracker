@@ -50,17 +50,17 @@ func (e *archiveExporter) Export(exports chan interface{}) error {
 
 		sc, ok := res.(*htracker.SiteContent)
 		if !ok {
-			return fmt.Errorf("expected response of type *SiteContent, got %T", res)
+			return fmt.Errorf("exporter.Export(): expected response of type *SiteContent, got %T", res)
 		}
 
 		_, err := e.archivesvc.Update(sc)
 		if err != nil {
-			e.logger.Error("failed to update site in db", err)
+			e.logger.Error("exporter.Export(): failed to update site in db", err)
 		}
 
 		select {
 		case <-e.ctx.Done():
-			e.logger.Warn("was signaled to stop via context - some scrape results might not have been exported to storage")
+			e.logger.Warn("exporter.Export(): was signaled to stop via context - some scrape results might not have been exported to storage")
 			return e.ctx.Err()
 		default:
 		}
