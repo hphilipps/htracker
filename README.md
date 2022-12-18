@@ -1,5 +1,7 @@
 # HTracker - track website updates
 
+HTracker is WIP and not ready for usage yet.
+
 ## Use Cases
 
 1. Add/remove URL from scrape list
