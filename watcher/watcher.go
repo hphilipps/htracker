@@ -164,7 +164,7 @@ func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error
 			select {
 			case batches <- batch:
 			case <-tctx.Done():
-				w.logger.Debug("watcher: RunScrapers() canceled", "error", tctx.Err())
+				w.logger.Debug("watcher: RunScrapers() interrupted", "error", tctx.Err())
 				return tctx.Err()
 			}
 			count = 0
