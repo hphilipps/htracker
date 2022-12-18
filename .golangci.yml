@@ -1,0 +1,65 @@
+run:
+  concurrency: 8
+  deadline: 1m
+  issues-exit-code: 1
+  modules-download-mode: readonly
+  tests: true
+  skip-dirs:
+    - vendor
+  build-tags:
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  errcheck:
+    check-type-assertions: false
+  cyclop:
+    maxComplexity: 10
+  govet:
+    check-shadowing: false
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  lll:
+    line-length: 160
+  gosec:
+    # To specify a set of rules to explicitly exclude.
+    # Available rules: https://github.com/securego/gosec#available-rules
+    excludes:
+      - G102
+
+linters:
+    enable-all: true
+    disable:
+      - dupl
+      - exhaustivestruct
+      - forcetypeassert
+      - funlen
+      - gochecknoglobals
+      - gofumpt
+      - gomnd
+      - nlreturn
+      - paralleltest
+      - scopelint # archived
+      - testpackage
+      - unparam
+      - wrapcheck
+      - wsl
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - bodyclose
+        - buildir
+        - errcheck
+        - goerr113
+        - goconst
+        - noctx
+        - staticcheck
+        - typecheck
+        - varnamelen
+        - wsl

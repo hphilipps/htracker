@@ -24,15 +24,14 @@ func NewSiteArchive(storage storage.SiteStorage) *siteArchive {
 	return &siteArchive{storage: storage}
 }
 
-// siteArchive is implementing SiteArchive
+// siteArchive is implementing SiteArchive.
 type siteArchive struct {
 	storage storage.SiteStorage
 }
 
 // Update is updating the DB with the results of the latest scrape of a site.
 func (archive *siteArchive) Update(content *htracker.SiteContent) (diff string, err error) {
-
-	sc, err := archive.storage.Find(content.Site)
+	acontent, err := archive.storage.Find(content.Site)
 	if err != nil {
 		if errors.Is(err, htracker.ErrNotExist) {
 			// site archive not found - create new entry
@@ -45,18 +44,18 @@ func (archive *siteArchive) Update(content *htracker.SiteContent) (diff string, 
 	}
 
 	// content unchanged
-	if sc.Checksum == content.Checksum {
-		sc.LastChecked = content.LastChecked
-		if err := archive.storage.Update(sc); err != nil {
+	if acontent.Checksum == content.Checksum {
+		acontent.LastChecked = content.LastChecked
+		if err := archive.storage.Update(acontent); err != nil {
 			return "", fmt.Errorf("ArchiveStorage.Update() - %w", err)
 		}
 		return "", nil
 	}
 
 	// content changed
-	sc.LastChecked = content.LastChecked
+	acontent.LastChecked = content.LastChecked
 
-	diff = DiffText(string(sc.Content), string(content.Content))
+	diff = DiffText(string(acontent.Content), string(content.Content))
 	if diff == "" {
 		// The diff function is ignoring whitespace changes as sometimes
 		// whitespace is rendered randomly. So it can happen that we see
@@ -65,20 +64,19 @@ func (archive *siteArchive) Update(content *htracker.SiteContent) (diff string, 
 		return "", nil
 	}
 
-	sc.Diff = diff
-	sc.LastUpdated = content.LastChecked
-	sc.Content = content.Content
-	sc.Checksum = content.Checksum
+	acontent.Diff = diff
+	acontent.LastUpdated = content.LastChecked
+	acontent.Content = content.Content
+	acontent.Checksum = content.Checksum
 
-	if err := archive.storage.Update(sc); err != nil {
-		return sc.Diff, fmt.Errorf("ArchiveStorage.Update() - %w", err)
+	if err := archive.storage.Update(acontent); err != nil {
+		return acontent.Diff, fmt.Errorf("ArchiveStorage.Update() - %w", err)
 	}
-	return sc.Diff, nil
+	return acontent.Diff, nil
 }
 
 // Get is returning metadata, checksum and content of a site in the DB identified by URL, filter and contentType.
 func (archive *siteArchive) Get(site *htracker.Site) (content *htracker.SiteContent, err error) {
-
 	content, err = archive.storage.Find(site)
 	if err != nil {
 		return &htracker.SiteContent{}, fmt.Errorf("ArchiveStorage.Find() - %w", err)
@@ -108,29 +106,27 @@ func DiffPrintAsText(diffs []diffmatchpatch.Diff) string {
 	return buff.String()
 }
 
-// stripStringsBuilder is stripping whitespace from the given string
+// stripStringsBuilder is stripping whitespace from the given string.
 func stripStringsBuilder(str string) string {
-	var b strings.Builder
-	b.Grow(len(str))
-	for _, ch := range str {
-		if !unicode.IsSpace(ch) {
-			b.WriteRune(ch)
+	var builder strings.Builder
+	builder.Grow(len(str))
+	for _, rune := range str {
+		if !unicode.IsSpace(rune) {
+			builder.WriteRune(rune)
 		}
 	}
-	return b.String()
+	return builder.String()
 }
 
 // DiffText is a helper function for comparing the content of sites.
 // We try to ignore whitespace changes, as sometimes whitespace seems to be rendered randomly.
 func DiffText(s1, s2 string) string {
-
 	if stripStringsBuilder(s1) == stripStringsBuilder(s2) {
 		return ""
 	}
 
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(s1, s2, false)
-	//return dmp.DiffPrettyText(dmp.DiffCleanupSemantic(diffs))
 	return DiffPrintAsText(dmp.DiffCleanupSemantic(diffs))
 }
 

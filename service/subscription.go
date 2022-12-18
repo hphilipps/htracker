@@ -31,12 +31,22 @@ type subscriptionSvc struct {
 	logger  slog.Logger
 }
 
-// compile time check of interface implementation
+// compile time check of interface implementation.
 var _ Subscription = &subscriptionSvc{}
 
 // NewSubscriptionSvc is returning a new SubscriptionService using the given storage backend.
 func NewSubscriptionSvc(storage storage.SubscriptionStorage) *subscriptionSvc {
 	return &subscriptionSvc{storage: storage}
+}
+
+// SubScriptionSvcOpt is representing functional options for the SubscriptionSvc.
+type SubscriptionSvcOpt func(*subscriptionSvc)
+
+// WithLogger is setting the logger of the SubscriptionSvc.
+func WithLogger(logger *slog.Logger) SubscriptionSvcOpt {
+	return func(svc *subscriptionSvc) {
+		svc.logger = *logger
+	}
 }
 
 // Subscribe is adding a subscription for the given email and will return
@@ -52,8 +62,8 @@ func (svc *subscriptionSvc) Subscribe(email string, site *htracker.Site) error {
 }
 
 // GetSitesBySubscribers returns a list of subscribed sites for the given subscriber.
-func (svc *subscriptionSvc) GetSitesBySubscriber(email string) (sites []*htracker.Site, err error) {
-	sites, err = svc.storage.FindBySubscriber(email)
+func (svc *subscriptionSvc) GetSitesBySubscriber(email string) ([]*htracker.Site, error) {
+	sites, err := svc.storage.FindBySubscriber(email)
 	if err != nil {
 		return sites, fmt.Errorf("storage.FindBySubscriber() - %w", err)
 	}

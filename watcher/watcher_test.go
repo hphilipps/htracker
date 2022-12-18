@@ -92,7 +92,7 @@ func TestWatcher_RunScrapers(t *testing.T) {
 	site1b := &htracker.Site{URL: "https://httpbin.org/anything", Filter: "filter1", ContentType: "html"}
 	site2 := &htracker.Site{URL: "https://httpbin.org/anything/2", Filter: "filter1", ContentType: "text"}
 
-	handler := slog.HandlerOptions{Level: slog.DebugLevel}.NewTextHandler(os.Stdout)
+	handler := slog.HandlerOptions{Level: slog.LevelDebug}.NewTextHandler(os.Stdout)
 	logger := slog.New(handler)
 
 	tests := []struct {
