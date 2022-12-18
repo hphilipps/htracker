@@ -115,13 +115,13 @@ func NewScraper(sites []*htracker.Site, opts ...Opt) *Scraper {
 	}
 
 	gcfg.StartRequestsFunc = func(g *geziyor.Geziyor) {
-		for _, s := range scraper.Sites {
-			if s.UseChrome {
+		for _, site := range scraper.Sites {
+			if site.UseChrome {
 				// using external chrome browser for rendering java script
-				g.GetRendered(s.URL, newParseFunc(s, scraper.Logger))
+				g.GetRendered(site.URL, newParseFunc(site, scraper.Logger))
 			} else {
 				// directly scrape the plain web site content without rendering JS
-				g.Get(s.URL, newParseFunc(s, scraper.Logger))
+				g.Get(site.URL, newParseFunc(site, scraper.Logger))
 			}
 		}
 	}

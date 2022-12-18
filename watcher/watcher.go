@@ -117,18 +117,18 @@ func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error
 	// spin up workers
 	for i := 0; i < w.threads; i++ {
 
-		n := i // capture loop var for use in closure
+		workerNr := i // capture loop var for use in closure
 		wg.Add(1)
 		w.logger.Debug("watcher: starting worker", "worker", i)
 
 		go func() {
 			defer wg.Done()
 			for {
-				w.logger.Debug("watcher: waiting for next batch of sites to process", "worker", n)
+				w.logger.Debug("watcher: waiting for next batch of sites to process", slog.Int("worker", workerNr))
 				select {
 				case batch, ok := <-batches:
 					if !ok {
-						w.logger.Debug("watcher: no more sites to process - worker shutting down", "worker", n)
+						w.logger.Debug("watcher: no more sites to process - worker shutting down", slog.Int("worker", workerNr))
 						return
 					}
 
@@ -140,12 +140,12 @@ func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error
 						opt(scraper)
 					}
 
-					w.logger.Debug("watcher: scraper starting", "worker", n)
+					w.logger.Debug("watcher: scraper starting", slog.Int("worker", workerNr))
 					scraper.Start()
-					w.logger.Debug("watcher: scraper finished", "worker", n)
+					w.logger.Debug("watcher: scraper finished", "worker", workerNr)
 
 				case <-tctx.Done():
-					w.logger.Debug("watcher: worker canceled - shutting down", "worker", n, "error", tctx.Err())
+					w.logger.Debug("watcher: worker canceled - shutting down", slog.Int("worker", workerNr), "error", tctx.Err())
 					return
 				}
 			}

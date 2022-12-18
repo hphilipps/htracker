@@ -31,7 +31,7 @@ type subscriptionSvc struct {
 	logger  slog.Logger
 }
 
-// compile time check of interface implementation
+// compile time check of interface implementation.
 var _ Subscription = &subscriptionSvc{}
 
 // NewSubscriptionSvc is returning a new SubscriptionService using the given storage backend.

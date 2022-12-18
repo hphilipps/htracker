@@ -36,16 +36,16 @@ func ArchiveService_UpdateSiteArchive(t *testing.T) {
 		updateDateExpected time.Time
 	}{
 		{name: "add new site1", date: date1, site: site1, content: content1,
-			checksum: Checksum([]byte(content1)), diffExpected: "",
+			checksum: Checksum(content1), diffExpected: "",
 			checkDateExpected: date1, updateDateExpected: date1},
 		{name: "add new site2", date: date1, site: site2, content: content2,
-			checksum: Checksum([]byte(content2)), diffExpected: "",
+			checksum: Checksum(content2), diffExpected: "",
 			checkDateExpected: date1, updateDateExpected: date1},
 		{name: "site1 unchanged", date: date2, site: site1, content: content1,
-			checksum: Checksum([]byte(content1)), diffExpected: "",
+			checksum: Checksum(content1), diffExpected: "",
 			checkDateExpected: date2, updateDateExpected: date1},
 		{name: "update site1", date: date2, site: site1, content: content1Updated,
-			checksum: Checksum([]byte(content1Updated)), diffExpected: DiffText(string(content1), string(content1Updated)),
+			checksum: Checksum(content1Updated), diffExpected: DiffText(string(content1), string(content1Updated)),
 			checkDateExpected: date2, updateDateExpected: date2},
 	}
 
