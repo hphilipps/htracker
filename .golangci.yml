@@ -57,7 +57,9 @@ issues:
         - buildir
         - errcheck
         - goerr113
+        - goconst
         - noctx
         - staticcheck
         - typecheck
+        - varnamelen
         - wsl

@@ -29,11 +29,11 @@ func NewSubscriptionStorage(logger *slog.Logger) *memDB {
 
 /*** Implementation of SubscriptionStorage interface ***/
 
-// compile time check of interface implementation
+// compile time check of interface implementation.
 var _ storage.SiteStorage = &memDB{}
 
 // Find is returning the site content for the given site or ErrNotExist if not found.
-func (db *memDB) Find(site *htracker.Site) (content *htracker.SiteContent, err error) {
+func (db *memDB) Find(site *htracker.Site) (*htracker.SiteContent, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -91,11 +91,11 @@ func (db *memDB) Update(content *htracker.SiteContent) error {
 
 /*** Implementation of SubscriptionStorage interface ***/
 
-// compile time check of interface implementation
+// compile time check of interface implementation.
 var _ storage.SubscriptionStorage = &memDB{}
 
 // FindBySubscriber is returning all subscribed sites for a given subscriber.
-func (db *memDB) FindBySubscriber(email string) (sites []*htracker.Site, err error) {
+func (db *memDB) FindBySubscriber(email string) ([]*htracker.Site, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -109,10 +109,11 @@ func (db *memDB) FindBySubscriber(email string) (sites []*htracker.Site, err err
 }
 
 // FindBySite is returning all subscribers subscribed to the given site.
-func (db *memDB) FindBySite(site *htracker.Site) (subscribers []*storage.Subscriber, err error) {
+func (db *memDB) FindBySite(site *htracker.Site) ([]*storage.Subscriber, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
+	subscribers := []*storage.Subscriber{}
 	for _, subscriber := range db.subscribers {
 		for _, s := range subscriber.Sites {
 			if s.Equals(site) {
@@ -126,7 +127,7 @@ func (db *memDB) FindBySite(site *htracker.Site) (subscribers []*storage.Subscri
 }
 
 // GetAllSubscribers is returning all subscribers.
-func (db *memDB) GetAllSubscribers() (subscribers []*storage.Subscriber, err error) {
+func (db *memDB) GetAllSubscribers() ([]*storage.Subscriber, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -164,10 +165,9 @@ func (db *memDB) RemoveSubscription(email string, site *htracker.Site) error {
 
 	for _, subscriber := range db.subscribers {
 		if subscriber.Email == email {
-
 			for i, s := range subscriber.Sites {
 				if s.Equals(site) {
-					//remove element i from list
+					// remove element i from list
 					subscriber.Sites[i] = subscriber.Sites[len(subscriber.Sites)-1]
 					subscriber.Sites = subscriber.Sites[:len(subscriber.Sites)-1]
 					return nil
@@ -189,7 +189,7 @@ func (db *memDB) RemoveSubscriber(email string) error {
 
 	for i, subscriber := range db.subscribers {
 		if subscriber.Email == email {
-			//remove element i from list
+			// remove element i from list
 			db.subscribers[i] = db.subscribers[len(db.subscribers)-1]
 			db.subscribers = db.subscribers[:len(db.subscribers)-1]
 			return nil

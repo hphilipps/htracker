@@ -21,7 +21,7 @@ type Watcher struct {
 	interval      time.Duration
 	batchSize     int
 	threads       int
-	scraperOpts   []scraper.ScraperOpt
+	scraperOpts   []scraper.Opt
 }
 
 // NewWatcher is returning a new Watcher instance.
@@ -53,7 +53,7 @@ func WithInterval(interval time.Duration) Opt {
 }
 
 // WithScraperOpts sets options for the scrapers that are launched with RunScrapers().
-func WithScraperOpts(opts ...scraper.ScraperOpt) Opt {
+func WithScraperOpts(opts ...scraper.Opt) Opt {
 	return func(w *Watcher) {
 		w.scraperOpts = opts
 	}

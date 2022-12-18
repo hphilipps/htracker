@@ -3,6 +3,7 @@ package scraper
 import (
 	"crypto/md5"
 	"fmt"
+	"net/http"
 	"regexp"
 	"time"
 
@@ -56,7 +57,7 @@ func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyo
 
 		var content []byte
 
-		if r.Response.StatusCode >= 400 {
+		if r.Response.StatusCode >= http.StatusBadRequest {
 			logger.Warn("got error status code", "code", r.Response.StatusCode, "url", site.URL)
 			return
 		}
@@ -88,7 +89,7 @@ func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyo
 }
 
 // NewScraper is returning a new Scraper to scrape given web sites.
-func NewScraper(sites []*htracker.Site, opts ...ScraperOpt) *Scraper {
+func NewScraper(sites []*htracker.Site, opts ...Opt) *Scraper {
 
 	scraper := &Scraper{
 		Sites:     sites,
@@ -130,33 +131,40 @@ func NewScraper(sites []*htracker.Site, opts ...ScraperOpt) *Scraper {
 	return scraper
 }
 
-type ScraperOpt func(*Scraper)
+// Opt is a type representing functional Scraper options.
+type Opt func(*Scraper)
 
-func WithAllowedDomains(domains []string) ScraperOpt {
+// WithAlloweDomains is white-listing only the given domains for scraping.
+func WithAllowedDomains(domains []string) Opt {
 	return func(s *Scraper) {
 		s.AllowedDomains = domains
 	}
 }
 
-func WithBrowserEndpoint(endpoint string) ScraperOpt {
+// WithBrowserEndpoint is configuring the endpoint for connecting to a chrome
+// browser instance for rendering the web site.
+func WithBrowserEndpoint(endpoint string) Opt {
 	return func(s *Scraper) {
 		s.BrowserEndpoint = endpoint
 	}
 }
 
-func WithTimeout(timeout time.Duration) ScraperOpt {
+// WithTimeout is setting the client timeout of the scraper.
+func WithTimeout(timeout time.Duration) Opt {
 	return func(s *Scraper) {
 		s.Timeout = timeout
 	}
 }
 
-func WithExporters(exporters []exporter.Interface) ScraperOpt {
+// WithExporters is adding exporters to export the scraped content (e.g. into a DB).
+func WithExporters(exporters []exporter.Interface) Opt {
 	return func(s *Scraper) {
 		s.Exporters = exporters
 	}
 }
 
-func WithLogger(logger *slog.Logger) ScraperOpt {
+// WithLogger configures the Logger.
+func WithLogger(logger *slog.Logger) Opt {
 	return func(s *Scraper) {
 		s.Logger = logger
 	}

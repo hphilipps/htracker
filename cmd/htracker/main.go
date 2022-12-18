@@ -36,7 +36,7 @@ func main() {
 		ContentType: *contentTypeFlag,
 	}
 
-	opts := []scraper.ScraperOpt{scraper.WithExporters([]exporter.Interface{exp})}
+	opts := []scraper.Opt{scraper.WithExporters([]exporter.Interface{exp})}
 	if *renderWithChromeFlag {
 		opts = append(opts, scraper.WithBrowserEndpoint(*chromeWSFlag))
 	}
