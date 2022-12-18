@@ -92,7 +92,7 @@ func main() {
 	subscriptionSvc.Subscribe("email1", &htracker.Site{URL: "http://httpbin.org/anything/2"})
 	subscriptionSvc.Subscribe("email2", &htracker.Site{URL: "http://httpbin.org/anything/2"})
 
-	dbgLogger := slog.New(slog.HandlerOptions{Level: slog.DebugLevel}.NewTextHandler(os.Stdout))
+	dbgLogger := slog.New(slog.HandlerOptions{Level: slog.LevelDebug}.NewTextHandler(os.Stdout))
 
 	w := watcher.NewWatcher(archive, subscriptionSvc, watcher.WithInterval(5*time.Second), watcher.WithLogger(dbgLogger))
 
