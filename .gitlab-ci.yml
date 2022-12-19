@@ -11,11 +11,17 @@ default:
 
 stages:
 - verify
+- test
+
+include:
+- template: Security/SAST.gitlab-ci.yml
+#- template: Jobs/Dependency-Scanning.gitlab-ci.yml # requires Ultimate
 
 sast:
   stage: verify
-include:
-- template: Security/SAST.gitlab-ci.yml
+
+#dependency_scanning: # requires ultimate
+#  stage: verify
 
 lint:
   image: registry.gitlab.com/gitlab-org/gitlab-build-images:golangci-lint-alpine
@@ -45,6 +51,6 @@ commitlint:
   - if: $CI_MERGE_REQUEST_IID
 
 test:
-  stage: verify
+  stage: test
   script:
   - go test -race ./...
