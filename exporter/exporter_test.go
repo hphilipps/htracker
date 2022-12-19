@@ -64,10 +64,9 @@ func TestExporter_Export(t *testing.T) {
 	}()
 
 	for _, tc := range testcases {
-
 		// simulate sending result from scraper and wait a bit for the DB to get updated
 		exports <- &htracker.SiteContent{Site: tc.site, LastUpdated: tc.date, LastChecked: tc.date,
-			Content: tc.content, Checksum: service.Checksum([]byte(tc.content))}
+			Content: tc.content, Checksum: service.Checksum(tc.content)}
 		time.Sleep(time.Millisecond)
 
 		sc, err := archive.Get(tc.site)

@@ -36,13 +36,14 @@ module.exports = {
 			2,
 			'always',
 			[
-				'correlation',
-				'errortracking',
-				'log',
-				'mask',
-				'metrics',
-				'monitoring',
-				'tracing',
+				'archivesvc',
+				'exporter',
+				'htracker',
+				'notifier',
+				'scraper',
+				'storage',
+				'subscriptionsvc',
+				'watcher',
 			]
 		]
 	},
