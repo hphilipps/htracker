@@ -1,5 +1,5 @@
 [![pipeline status](https://gitlab.com/henri.philipps/htracker/badges/main/pipeline.svg)](https://gitlab.com/henri.philipps/htracker/-/commits/main)
-[![coverage report](https://gitlab.com/henri.philipps/htracker/badges/main/coverage.svg)](https://gitlab.com/henri.philipps/htracker/-/commits/main)
+[![coverage report](https://gitlab.com/henri.philipps/htracker/badges/main/coverage.svg?job=coverage)](https://gitlab.com/henri.philipps/htracker/-/commits/main)
 [![Latest Release](https://gitlab.com/henri.philipps/htracker/-/badges/release.svg)](https://gitlab.com/henri.philipps/htracker/-/releases)
 
 # HTracker - track website updates
