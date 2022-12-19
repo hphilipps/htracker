@@ -110,47 +110,10 @@ func (w *Watcher) GenerateScrapeList() (sites []*htracker.Site, err error) {
 func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error {
 	tctx, _ := context.WithTimeout(ctx, w.interval)
 	wg := &sync.WaitGroup{}
-
-	exporters := []exporter.Interface{exporter.NewExporter(tctx, w.archive)}
 	batches := make(chan []*htracker.Site, w.threads)
 
 	// spin up workers
-	for i := 0; i < w.threads; i++ {
-
-		workerNr := i // capture loop var for use in closure
-		wg.Add(1)
-		w.logger.Debug("watcher: starting worker", "worker", i)
-
-		go func() {
-			defer wg.Done()
-			for {
-				w.logger.Debug("watcher: waiting for next batch of sites to process", slog.Int("worker", workerNr))
-				select {
-				case batch, ok := <-batches:
-					if !ok {
-						w.logger.Debug("watcher: no more sites to process - worker shutting down", slog.Int("worker", workerNr))
-						return
-					}
-
-					scraper := scraper.NewScraper(batch,
-						scraper.WithExporters(exporters),
-						scraper.WithLogger(w.logger),
-					)
-					for _, opt := range w.scraperOpts {
-						opt(scraper)
-					}
-
-					w.logger.Debug("watcher: scraper starting", slog.Int("worker", workerNr))
-					scraper.Start()
-					w.logger.Debug("watcher: scraper finished", "worker", workerNr)
-
-				case <-tctx.Done():
-					w.logger.Debug("watcher: worker canceled - shutting down", slog.Int("worker", workerNr), "error", tctx.Err())
-					return
-				}
-			}
-		}()
-	}
+	w.startWorkers(tctx, batches, wg)
 
 	batch := []*htracker.Site{}
 	count := 0
@@ -179,6 +142,48 @@ func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error
 	w.logger.Debug("watcher: all workers finished")
 
 	return nil
+}
+
+// startWorkers is spinning up scraper threads for concurrent processing of batches of sites.
+func (w *Watcher) startWorkers(ctx context.Context, batches chan []*htracker.Site, wg *sync.WaitGroup) {
+
+	exporters := []exporter.Interface{exporter.NewExporter(ctx, w.archive)}
+
+	for i := 0; i < w.threads; i++ {
+		workerNr := i // capture loop var for use in closure
+		wg.Add(1)
+		w.logger.Debug("watcher: starting worker", "worker", i)
+
+		go func() {
+			defer wg.Done()
+			for {
+				w.logger.Debug("watcher: waiting for next batch of sites to process", slog.Int("worker", workerNr))
+				select {
+				case batch, ok := <-batches:
+					if !ok {
+						w.logger.Debug("watcher: no more sites to process - worker shutting down", slog.Int("worker", workerNr))
+						return
+					}
+
+					scraper := scraper.NewScraper(batch,
+						scraper.WithExporters(exporters),
+						scraper.WithLogger(w.logger),
+					)
+					for _, opt := range w.scraperOpts {
+						opt(scraper)
+					}
+
+					w.logger.Debug("watcher: scraper starting", slog.Int("worker", workerNr))
+					scraper.Start()
+					w.logger.Debug("watcher: scraper finished", "worker", workerNr)
+
+				case <-ctx.Done():
+					w.logger.Debug("watcher: worker canceled - shutting down", slog.Int("worker", workerNr), "error", ctx.Err())
+					return
+				}
+			}
+		}()
+	}
 }
 
 // Start is making the watcher scrape all subscribed websites in regular intervals.
