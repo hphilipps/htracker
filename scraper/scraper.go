@@ -54,7 +54,6 @@ type Scraper struct {
 // and send the results as siteArchive to the Exports channel.
 func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyor, *client.Response) {
 	return func(g *geziyor.Geziyor, r *client.Response) {
-
 		var content []byte
 
 		if r.Response.StatusCode >= http.StatusBadRequest {
@@ -64,24 +63,22 @@ func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyo
 
 		if site.Filter == "" {
 			content = r.Body
+		} else if r.HTMLDoc != nil {
+			content = []byte(r.HTMLDoc.Find(site.Filter).Text())
 		} else {
-			if r.HTMLDoc != nil {
-				content = []byte(r.HTMLDoc.Find(site.Filter).Text())
-			} else {
-				exp, err := regexp.Compile(site.Filter)
-				if err != nil {
-					logger.Error("ParseFunc failed to compile regexp", err, "regexp", site.Filter, "site", site.URL)
-					return
-				}
-				content = exp.Find(r.Body)
+			exp, err := regexp.Compile(site.Filter)
+			if err != nil {
+				logger.Error("ParseFunc failed to compile regexp", err, slog.String("regexp", site.Filter), slog.String("site", site.URL))
+				return
 			}
+			content = exp.Find(r.Body)
 		}
 
 		sa := &htracker.SiteContent{
 			Site:        site,
 			LastChecked: time.Now(),
 			Content:     content,
-			Checksum:    fmt.Sprintf("%x", sha256.Sum256([]byte(content))),
+			Checksum:    fmt.Sprintf("%x", sha256.Sum256(content)),
 		}
 
 		g.Exports <- sa
