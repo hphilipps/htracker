@@ -52,7 +52,6 @@ func WithLogger(logger *slog.Logger) SubscriptionSvcOpt {
 // Subscribe is adding a subscription for the given email and will return
 // an error if the subscription already exists.
 func (svc *subscriptionSvc) Subscribe(email string, site *htracker.Site) error {
-
 	err := svc.storage.AddSubscription(email, site)
 	if err != nil {
 		return fmt.Errorf("storage.AddSubscription() - %w", err)
@@ -73,7 +72,6 @@ func (svc *subscriptionSvc) GetSitesBySubscriber(email string) ([]*htracker.Site
 
 // GetSubscribersBySite returns a list of subscribed emails for a given site.
 func (svc *subscriptionSvc) GetSubscribersBySite(site *htracker.Site) (subscribers []*Subscriber, err error) {
-
 	sub, err := svc.storage.FindBySite(site)
 	if err != nil {
 		return []*Subscriber{}, fmt.Errorf("storage.FindBySite() - %w", err)
@@ -89,7 +87,6 @@ func (svc *subscriptionSvc) GetSubscribersBySite(site *htracker.Site) (subscribe
 
 // GetSubscribers returns all existing subscribers.
 func (svc *subscriptionSvc) GetSubscribers() (subscribers []*Subscriber, err error) {
-
 	sub, err := svc.storage.GetAllSubscribers()
 	if err != nil {
 		return []*Subscriber{}, fmt.Errorf("storage.GetAllSubscribers() - %w", err)
@@ -105,7 +102,6 @@ func (svc *subscriptionSvc) GetSubscribers() (subscribers []*Subscriber, err err
 
 // Unsubscribe is unsubscribing a subscriber from watching a site.
 func (svc *subscriptionSvc) Unsubscribe(email string, site *htracker.Site) error {
-
 	if err := svc.storage.RemoveSubscription(email, site); err != nil {
 		return fmt.Errorf("storage.RemoveSubscription() - %w", err)
 	}
@@ -115,7 +111,6 @@ func (svc *subscriptionSvc) Unsubscribe(email string, site *htracker.Site) error
 
 // DeleteSubscriber is removing a subscriber with all it's subscriptions.
 func (svc *subscriptionSvc) DeleteSubscriber(email string) error {
-
 	if err := svc.storage.RemoveSubscriber(email); err != nil {
 		return fmt.Errorf("storage.RemoveSubscriber - %w", err)
 	}
