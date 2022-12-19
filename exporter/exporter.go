@@ -22,7 +22,7 @@ type archiveExporter struct {
 
 type Opt func(*archiveExporter)
 
-// WithLogger configures the logger of the archiveExporter
+// WithLogger configures the logger of the archiveExporter.
 func WithLogger(logger *slog.Logger) Opt {
 	return func(exp *archiveExporter) {
 		exp.logger = *logger

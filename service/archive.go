@@ -76,8 +76,8 @@ func (archive *siteArchive) Update(content *htracker.SiteContent) (diff string, 
 }
 
 // Get is returning metadata, checksum and content of a site in the DB identified by URL, filter and contentType.
-func (archive *siteArchive) Get(site *htracker.Site) (content *htracker.SiteContent, err error) {
-	content, err = archive.storage.Find(site)
+func (archive *siteArchive) Get(site *htracker.Site) (*htracker.SiteContent, error) {
+	content, err := archive.storage.Find(site)
 	if err != nil {
 		return &htracker.SiteContent{}, fmt.Errorf("ArchiveStorage.Find() - %w", err)
 	}
@@ -120,13 +120,13 @@ func stripStringsBuilder(str string) string {
 
 // DiffText is a helper function for comparing the content of sites.
 // We try to ignore whitespace changes, as sometimes whitespace seems to be rendered randomly.
-func DiffText(s1, s2 string) string {
-	if stripStringsBuilder(s1) == stripStringsBuilder(s2) {
+func DiffText(str1, str2 string) string {
+	if stripStringsBuilder(str1) == stripStringsBuilder(str2) {
 		return ""
 	}
 
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(s1, s2, false)
+	diffs := dmp.DiffMain(str1, str2, false)
 	return DiffPrintAsText(dmp.DiffCleanupSemantic(diffs))
 }
 
