@@ -1,7 +1,7 @@
 package scraper
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -81,7 +81,7 @@ func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyo
 			Site:        site,
 			LastChecked: time.Now(),
 			Content:     content,
-			Checksum:    fmt.Sprintf("%x", md5.Sum([]byte(content))),
+			Checksum:    fmt.Sprintf("%x", sha256.Sum256([]byte(content))),
 		}
 
 		g.Exports <- sa

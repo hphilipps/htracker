@@ -101,15 +101,25 @@ func TestWatcher_RunScrapers(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{name: "scrape 0, threads: 1, batch size: 1", fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{}}},
-		{name: "scrape 1, threads: 1, batch size: 1", fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 2, threads: 1, batch size: 1", fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
-		{name: "scrape 1, threads: 2, batch size: 1", fields: fields{batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 1, threads: 1, batch size: 2", fields: fields{batchSize: 2, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 1, threads: 2, batch size: 2", fields: fields{batchSize: 2, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
-		{name: "scrape 2, threads: 2, batch size: 1", fields: fields{batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
-		{name: "scrape 4, threads: 4, batch size: 2", fields: fields{batchSize: 2, threads: 4, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}}},
-		{name: "scrape 4, with timeout", fields: fields{batchSize: 1, threads: 1, interval: time.Millisecond}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}}, wantErr: true},
+		{name: "scrape 0, threads: 1, batch size: 1",
+			fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{}}},
+		{name: "scrape 1, threads: 1, batch size: 1",
+			fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 2, threads: 1, batch size: 1",
+			fields: fields{batchSize: 1, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
+		{name: "scrape 1, threads: 2, batch size: 1",
+			fields: fields{batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 1, threads: 1, batch size: 2",
+			fields: fields{batchSize: 2, threads: 1, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 1, threads: 2, batch size: 2",
+			fields: fields{batchSize: 2, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1}}},
+		{name: "scrape 2, threads: 2, batch size: 1",
+			fields: fields{batchSize: 1, threads: 2, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a}}},
+		{name: "scrape 4, threads: 4, batch size: 2",
+			fields: fields{batchSize: 2, threads: 4, interval: time.Hour}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}}},
+		{name: "scrape 4, with timeout",
+			fields: fields{batchSize: 1, threads: 1, interval: time.Millisecond}, args: args{sites: []*htracker.Site{site1, site1a, site1b, site2}},
+			wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

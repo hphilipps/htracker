@@ -11,7 +11,6 @@ import (
 )
 
 func TestSubscriptionSvc_Subscribe(t *testing.T) {
-
 	type args struct {
 		email string
 		site  *htracker.Site
@@ -46,7 +45,6 @@ func TestSubscriptionSvc_Subscribe(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			if err := svc.Subscribe(tt.args.email, tt.args.site); (err != nil) != tt.wantErr {
 				t.Errorf("MemoryDB.Subscribe() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -77,7 +75,6 @@ func TestSubscriptionSvc_Subscribe(t *testing.T) {
 }
 
 func TestSubscriptionSvc_Unsubscribe(t *testing.T) {
-
 	type args struct {
 		email string
 		site  *htracker.Site
@@ -110,14 +107,22 @@ func TestSubscriptionSvc_Unsubscribe(t *testing.T) {
 		wantErr   bool
 		wantEmail bool
 	}{
-		{name: "unsubscribe email1 from site1", args: args{email: email1, site: site1}, wantSites: []*htracker.Site{site2, site3}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email2 from site1", args: args{email: email2, site: site1}, wantSites: []*htracker.Site{site2}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email3 from not subscribed site1", args: args{email: email3, site: site1}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: true},
-		{name: "unsubscribe email1 from site2", args: args{email: email1, site: site2}, wantSites: []*htracker.Site{site3}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email2 from site2", args: args{email: email2, site: site2}, wantSites: []*htracker.Site{}, wantErr: false, wantEmail: true},
-		{name: "unsubscribe email1 from site2 again", args: args{email: email1, site: site2}, wantSites: []*htracker.Site{site3}, wantErr: true, wantEmail: true},
-		{name: "unsubscribe email3 from not subscribed site3", args: args{email: email3, site: site3}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: true},
-		{name: "unsubscribe nonexistent subscriber from site1", args: args{email: "nothing@foo.test", site: site1}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: false},
+		{name: "unsubscribe email1 from site1",
+			args: args{email: email1, site: site1}, wantSites: []*htracker.Site{site2, site3}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email2 from site1",
+			args: args{email: email2, site: site1}, wantSites: []*htracker.Site{site2}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email3 from not subscribed site1",
+			args: args{email: email3, site: site1}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: true},
+		{name: "unsubscribe email1 from site2",
+			args: args{email: email1, site: site2}, wantSites: []*htracker.Site{site3}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email2 from site2",
+			args: args{email: email2, site: site2}, wantSites: []*htracker.Site{}, wantErr: false, wantEmail: true},
+		{name: "unsubscribe email1 from site2 again",
+			args: args{email: email1, site: site2}, wantSites: []*htracker.Site{site3}, wantErr: true, wantEmail: true},
+		{name: "unsubscribe email3 from not subscribed site3",
+			args: args{email: email3, site: site3}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: true},
+		{name: "unsubscribe nonexistent subscriber from site1",
+			args: args{email: "nothing@foo.test", site: site1}, wantSites: []*htracker.Site{}, wantErr: true, wantEmail: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

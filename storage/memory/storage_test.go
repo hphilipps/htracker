@@ -1,7 +1,7 @@
 package memory
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"reflect"
 	"testing"
@@ -29,9 +29,9 @@ func Test_memDB_Find(t *testing.T) {
 	content2 := []byte("This is Site2")
 
 	sc1 := &htracker.SiteContent{Site: site1, LastUpdated: date, LastChecked: date,
-		Content: content1, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1)))}
+		Content: content1, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content1)))}
 	sc2 := &htracker.SiteContent{Site: site2, LastUpdated: date, LastChecked: date,
-		Content: content2, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(content2)))}
+		Content: content2, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content2)))}
 
 	tests := []struct {
 		name        string
@@ -81,8 +81,8 @@ func Test_memDB_Add(t *testing.T) {
 	content1 := []byte("This is Site1")
 	content2 := []byte("This is Site2")
 
-	sc1 := &htracker.SiteContent{Site: site1, LastUpdated: date, LastChecked: date, Content: content1, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(content1)))}
-	sc2 := &htracker.SiteContent{Site: site2, LastUpdated: date, LastChecked: date, Content: content2, Checksum: fmt.Sprintf("%x", md5.Sum([]byte(content2)))}
+	sc1 := &htracker.SiteContent{Site: site1, LastUpdated: date, LastChecked: date, Content: content1, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content1)))}
+	sc2 := &htracker.SiteContent{Site: site2, LastUpdated: date, LastChecked: date, Content: content2, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content2)))}
 
 	tests := []struct {
 		name      string

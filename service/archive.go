@@ -2,7 +2,7 @@ package service
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -131,5 +131,5 @@ func DiffText(str1, str2 string) string {
 }
 
 func Checksum(data []byte) string {
-	return fmt.Sprintf("%x", md5.Sum(data))
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
