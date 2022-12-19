@@ -56,6 +56,7 @@ issues:
         - bodyclose
         - buildir
         - errcheck
+        - exhaustruct
         - goerr113
         - goconst
         - noctx
