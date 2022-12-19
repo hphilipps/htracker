@@ -62,7 +62,7 @@ coverage:
   - go get github.com/boumenot/gocover-cobertura
   - go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
   - go tool cover -func coverage.txt
-  coverage: /^total:.*statements.*(\d+\.\d+\%)/
+  coverage: /^total:s+\(statements\)\s+(\d+\.\d+\%)/
   artifacts:
     reports:
       coverage_report:
