@@ -134,6 +134,20 @@ func (db *memDB) GetAllSubscribers() ([]*storage.Subscriber, error) {
 	return db.subscribers, nil
 }
 
+// GetSubscriber returns the subscriber with the given email, if found.
+func (db *memDB) GetSubscriber(email string) (*storage.Subscriber, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for _, sub := range db.subscribers {
+		if sub.Email == email {
+			return sub, nil
+		}
+	}
+
+	return nil, fmt.Errorf("email %s not found: %w", email, htracker.ErrNotExist)
+}
+
 // AddSubscription is adding a new subscription if it doesn't exist yet.
 func (db *memDB) AddSubscription(email string, subscription *htracker.Subscription) error {
 	db.mu.Lock()
