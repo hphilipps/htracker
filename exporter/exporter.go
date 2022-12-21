@@ -13,7 +13,7 @@ import (
 // wrapping geziyor export.Exporter here to avoid needing to import it in depending packages.
 type Interface = export.Exporter
 
-// archiveExporter is implementing the Exporter interface and exporting scrape results into a SiteArchive service.
+// archiveExporter is implementing the Exporter interface and exporting scrape results into a SiteArchiveSvc.
 type archiveExporter struct {
 	ctx        context.Context
 	archivesvc service.SiteArchive
@@ -47,12 +47,12 @@ func NewExporter(ctx context.Context, archive service.SiteArchive, opts ...Opt) 
 // Export is reading from the given exports channel and exporting the data into a SiteArchive.
 func (e *archiveExporter) Export(exports chan interface{}) error {
 	for res := range exports {
-		sc, ok := res.(*htracker.SiteContent)
+		site, ok := res.(*htracker.Site)
 		if !ok {
-			return fmt.Errorf("exporter.Export(): expected response of type *SiteContent, got %T", res)
+			return fmt.Errorf("exporter.Export(): expected response of type *Site, got %T", res)
 		}
 
-		_, err := e.archivesvc.Update(sc)
+		_, err := e.archivesvc.Update(site)
 		if err != nil {
 			e.logger.Error("exporter.Export(): failed to update site in db", err)
 		}

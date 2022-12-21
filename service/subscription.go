@@ -8,31 +8,31 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// Subscription is an interface for a service managing subscribers to updates of web sites
+// SubscriptionSvc is an interface for a service managing subscriptions to updates of web sites
 // to be scraped.
-type Subscription interface {
-	Subscribe(email string, site *htracker.Site) error
-	GetSitesBySubscriber(email string) (sites []*htracker.Site, err error)
-	GetSubscribersBySite(site *htracker.Site) (subscribers []*Subscriber, err error)
-	GetSubscribers() (subscribers []*Subscriber, err error)
-	Unsubscribe(email string, site *htracker.Site) error
+type SubscriptionSvc interface {
+	Subscribe(email string, subscription *htracker.Subscription) error
+	GetSubscriptionsBySubscriber(email string) ([]*htracker.Subscription, error)
+	GetSubscribersBySubscription(*htracker.Subscription) ([]*Subscriber, error)
+	GetSubscribers() ([]*Subscriber, error)
+	Unsubscribe(email string, subscription *htracker.Subscription) error
 	DeleteSubscriber(email string) error
 }
 
-// Subscriber is holding the list of subscribed sites of a Subscriber.
+// Subscriber is describing a user holding subscriptions to sites.
 type Subscriber struct {
-	Email string
-	Sites []*htracker.Site
+	Email         string
+	Subscriptions []*htracker.Subscription
 }
 
-// subscriptionSvc is implementing the Subscription service interface.
+// subscriptionSvc is implementing the SubscriptionSvc interface.
 type subscriptionSvc struct {
 	storage storage.SubscriptionStorage
 	logger  slog.Logger
 }
 
 // compile time check of interface implementation.
-var _ Subscription = &subscriptionSvc{}
+var _ SubscriptionSvc = &subscriptionSvc{}
 
 // NewSubscriptionSvc is returning a new SubscriptionService using the given storage backend.
 func NewSubscriptionSvc(storage storage.SubscriptionStorage) *subscriptionSvc {
@@ -51,35 +51,35 @@ func WithLogger(logger *slog.Logger) SubscriptionSvcOpt {
 
 // Subscribe is adding a subscription for the given email and will return
 // an error if the subscription already exists.
-func (svc *subscriptionSvc) Subscribe(email string, site *htracker.Site) error {
-	err := svc.storage.AddSubscription(email, site)
+func (svc *subscriptionSvc) Subscribe(email string, subscription *htracker.Subscription) error {
+	err := svc.storage.AddSubscription(email, subscription)
 	if err != nil {
-		return fmt.Errorf("storage.AddSubscription() - %w", err)
+		return fmt.Errorf("storage.AddSubscription(): %w", err)
 	}
 
 	return nil
 }
 
-// GetSitesBySubscribers returns a list of subscribed sites for the given subscriber.
-func (svc *subscriptionSvc) GetSitesBySubscriber(email string) ([]*htracker.Site, error) {
+// GetSubscriptionsBySubscribers returns a list of subscriptions for the given subscriber.
+func (svc *subscriptionSvc) GetSubscriptionsBySubscriber(email string) ([]*htracker.Subscription, error) {
 	sites, err := svc.storage.FindBySubscriber(email)
 	if err != nil {
-		return sites, fmt.Errorf("storage.FindBySubscriber() - %w", err)
+		return sites, fmt.Errorf("storage.FindBySubscriber(): %w", err)
 	}
 
 	return sites, nil
 }
 
-// GetSubscribersBySite returns a list of subscribed emails for a given site.
-func (svc *subscriptionSvc) GetSubscribersBySite(site *htracker.Site) (subscribers []*Subscriber, err error) {
-	sub, err := svc.storage.FindBySite(site)
+// GetSubscribersBySubscription returns a list of subscribed emails for a given site.
+func (svc *subscriptionSvc) GetSubscribersBySubscription(subscription *htracker.Subscription) (subscribers []*Subscriber, err error) {
+	storSubscribers, err := svc.storage.FindBySubscription(subscription)
 	if err != nil {
-		return []*Subscriber{}, fmt.Errorf("storage.FindBySite() - %w", err)
+		return []*Subscriber{}, fmt.Errorf("storage.FindBySubscription(): %w", err)
 	}
 
-	// TODO: avoid this transformation. factor out Subscriber type?
-	for _, s := range sub {
-		subscribers = append(subscribers, &Subscriber{Email: s.Email, Sites: s.Sites})
+	// TODO: should we avoid this transformation? factor out Subscriber type?
+	for _, s := range storSubscribers {
+		subscribers = append(subscribers, &Subscriber{Email: s.Email, Subscriptions: s.Subscriptions})
 	}
 
 	return subscribers, nil
@@ -87,23 +87,23 @@ func (svc *subscriptionSvc) GetSubscribersBySite(site *htracker.Site) (subscribe
 
 // GetSubscribers returns all existing subscribers.
 func (svc *subscriptionSvc) GetSubscribers() (subscribers []*Subscriber, err error) {
-	sub, err := svc.storage.GetAllSubscribers()
+	storSubscribers, err := svc.storage.GetAllSubscribers()
 	if err != nil {
-		return []*Subscriber{}, fmt.Errorf("storage.GetAllSubscribers() - %w", err)
+		return []*Subscriber{}, fmt.Errorf("storage.GetAllSubscribers(): %w", err)
 	}
 
-	// TODO: avoid this transformation. factor out Subscriber type?
-	for _, s := range sub {
-		subscribers = append(subscribers, &Subscriber{Email: s.Email, Sites: s.Sites})
+	// TODO: should we avoid this transformation? factor out Subscriber type?
+	for _, s := range storSubscribers {
+		subscribers = append(subscribers, &Subscriber{Email: s.Email, Subscriptions: s.Subscriptions})
 	}
 
 	return subscribers, nil
 }
 
 // Unsubscribe is unsubscribing a subscriber from watching a site.
-func (svc *subscriptionSvc) Unsubscribe(email string, site *htracker.Site) error {
-	if err := svc.storage.RemoveSubscription(email, site); err != nil {
-		return fmt.Errorf("storage.RemoveSubscription() - %w", err)
+func (svc *subscriptionSvc) Unsubscribe(email string, subscription *htracker.Subscription) error {
+	if err := svc.storage.RemoveSubscription(email, subscription); err != nil {
+		return fmt.Errorf("storage.RemoveSubscription(): %w", err)
 	}
 
 	return nil
@@ -112,7 +112,7 @@ func (svc *subscriptionSvc) Unsubscribe(email string, site *htracker.Site) error
 // DeleteSubscriber is removing a subscriber with all it's subscriptions.
 func (svc *subscriptionSvc) DeleteSubscriber(email string) error {
 	if err := svc.storage.RemoveSubscriber(email); err != nil {
-		return fmt.Errorf("storage.RemoveSubscriber - %w", err)
+		return fmt.Errorf("storage.RemoveSubscriber: %w", err)
 	}
 
 	return nil

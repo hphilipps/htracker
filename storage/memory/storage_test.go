@@ -1,53 +1,52 @@
 package memory
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
 	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/service"
 	"golang.org/x/exp/slog"
 )
 
-func Test_memDB_Find(t *testing.T) {
+func Test_memDB_Get(t *testing.T) {
 	type fields struct {
-		archive []*htracker.SiteContent
+		archive []*htracker.Site
 	}
 	type args struct {
-		site *htracker.Site
+		subscription *htracker.Subscription
 	}
 
 	date := time.Now()
 
-	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
-	site3 := &htracker.Site{URL: "http://site3.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	sub1 := &htracker.Subscription{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	sub2 := &htracker.Subscription{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	sub3 := &htracker.Subscription{URL: "http://site3.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
 
 	content1 := []byte("This is Site1")
 	content2 := []byte("This is Site2")
 
-	sc1 := &htracker.SiteContent{Site: site1, LastUpdated: date, LastChecked: date,
-		Content: content1, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content1)))}
-	sc2 := &htracker.SiteContent{Site: site2, LastUpdated: date, LastChecked: date,
-		Content: content2, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content2)))}
+	site1 := &htracker.Site{Subscription: sub1, LastUpdated: date, LastChecked: date,
+		Content: content1, Checksum: service.Checksum(content1)}
+	site2 := &htracker.Site{Subscription: sub2, LastUpdated: date, LastChecked: date,
+		Content: content2, Checksum: service.Checksum(content2)}
 
 	tests := []struct {
-		name        string
-		fields      fields
-		args        args
-		wantContent *htracker.SiteContent
-		wantErr     bool
+		name     string
+		fields   fields
+		args     args
+		wantSite *htracker.Site
+		wantErr  bool
 	}{
-		{name: "find 1 in 1", fields: fields{archive: []*htracker.SiteContent{sc1}},
-			args: args{site1}, wantContent: sc1, wantErr: false},
-		{name: "find 1 in 2", fields: fields{archive: []*htracker.SiteContent{sc1, sc2}},
-			args: args{site2}, wantContent: sc2, wantErr: false},
-		{name: "find 0 in 2", fields: fields{archive: []*htracker.SiteContent{sc1, sc2}},
-			args: args{site3}, wantContent: &htracker.SiteContent{}, wantErr: true},
-		{name: "find 0 in 0", fields: fields{archive: []*htracker.SiteContent{}},
-			args: args{site3}, wantContent: &htracker.SiteContent{}, wantErr: true},
+		{name: "find 1 in 1", fields: fields{archive: []*htracker.Site{site1}},
+			args: args{sub1}, wantSite: site1, wantErr: false},
+		{name: "find 1 in 2", fields: fields{archive: []*htracker.Site{site1, site2}},
+			args: args{sub2}, wantSite: site2, wantErr: false},
+		{name: "find 0 in 2", fields: fields{archive: []*htracker.Site{site1, site2}},
+			args: args{sub3}, wantSite: &htracker.Site{}, wantErr: true},
+		{name: "find 0 in 0", fields: fields{archive: []*htracker.Site{}},
+			args: args{sub3}, wantSite: &htracker.Site{}, wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -56,13 +55,13 @@ func Test_memDB_Find(t *testing.T) {
 				archive: tt.fields.archive,
 				logger:  slog.Default(),
 			}
-			gotContent, err := db.Find(tt.args.site)
+			gotSite, err := db.Get(tt.args.subscription)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("memDB.Find() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("memDB.Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotContent, tt.wantContent) {
-				t.Errorf("memDB.Find() = %v, want %v", gotContent, tt.wantContent)
+			if !reflect.DeepEqual(gotSite, tt.wantSite) {
+				t.Errorf("memDB.Get() = %v, want %v", gotSite, tt.wantSite)
 			}
 		})
 	}
@@ -70,42 +69,42 @@ func Test_memDB_Find(t *testing.T) {
 
 func Test_memDB_Add(t *testing.T) {
 	type args struct {
-		content *htracker.SiteContent
+		site *htracker.Site
 	}
 
 	date := time.Now()
 
-	site1 := &htracker.Site{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
-	site2 := &htracker.Site{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
+	sub1 := &htracker.Subscription{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
+	sub2 := &htracker.Subscription{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
 
 	content1 := []byte("This is Site1")
 	content2 := []byte("This is Site2")
 
-	sc1 := &htracker.SiteContent{Site: site1, LastUpdated: date, LastChecked: date, Content: content1, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content1)))}
-	sc2 := &htracker.SiteContent{Site: site2, LastUpdated: date, LastChecked: date, Content: content2, Checksum: fmt.Sprintf("%x", sha256.Sum256([]byte(content2)))}
+	site1 := &htracker.Site{Subscription: sub1, LastUpdated: date, LastChecked: date, Content: content1, Checksum: service.Checksum(content1)}
+	site2 := &htracker.Site{Subscription: sub2, LastUpdated: date, LastChecked: date, Content: content2, Checksum: service.Checksum(content2)}
 
 	tests := []struct {
 		name      string
 		args      args
 		wantErr   bool
-		wantSites []*htracker.SiteContent
+		wantSites []*htracker.Site
 	}{
-		{name: "add site1", wantSites: []*htracker.SiteContent{sc1},
-			args: args{sc1}, wantErr: false},
-		{name: "add site2", wantSites: []*htracker.SiteContent{sc1, sc2},
-			args: args{sc2}, wantErr: false},
-		{name: "add site2 again", wantSites: []*htracker.SiteContent{sc1, sc2},
-			args: args{sc2}, wantErr: true},
+		{name: "add site1", wantSites: []*htracker.Site{site1},
+			args: args{site1}, wantErr: false},
+		{name: "add site2", wantSites: []*htracker.Site{site1, site2},
+			args: args{site2}, wantErr: false},
+		{name: "add site2 again", wantSites: []*htracker.Site{site1, site2},
+			args: args{site2}, wantErr: true},
 	}
 
 	db := &memDB{
-		archive: []*htracker.SiteContent{},
+		archive: []*htracker.Site{},
 		logger:  slog.Default(),
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := db.Add(tt.args.content); (err != nil) != tt.wantErr {
+			if err := db.Add(tt.args.site); (err != nil) != tt.wantErr {
 				t.Errorf("memDB.Add() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if got := db.archive; !reflect.DeepEqual(got, tt.wantSites) {
