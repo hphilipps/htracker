@@ -27,6 +27,11 @@ HTracker is WIP and not ready for usage yet.
 2. Scrape sites with similar filters/content types in batches
     1. Maybe: Notify notifier?
 
+## Feed
+
+1. Service providing access to site archive
+2. Maybe implement as RSS feed?
+
 ## Notifier
 
 1. Frequently, go through all subscriptions and notify if last notification is older than notification period (deduplicate by subscriber)
