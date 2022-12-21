@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-regexp='^(?:ci|feat|fix|docs|style|refactor|revert|perf|test|chore)\(?(?:\w+|\s|\-|_)?\)?:\s\w+'
+regexp='^(ci|feat|fix|docs|style|refactor|revert|perf|test|chore)\(?(\w+|\s|\-|_)?\)?:\s\w+'
 
 while read line; do
 	# ignore merge requests
