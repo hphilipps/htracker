@@ -41,12 +41,11 @@ lint:
 
 commitlint:
   stage: verify
-  image: node:14-alpine3.12
+  image: alpine:3.17
   before_script:
   - apk add --no-cache git
-  - npm install
   script:
-  - npx commitlint --from ${CI_MERGE_REQUEST_DIFF_BASE_SHA} --to HEAD --verbose
+  - git log --format=%s ${CI_MERGE_REQUEST_DIFF_BASE_SHA}..HEAD | scripts/commit-lint.sh
   rules:
   - if: $CI_MERGE_REQUEST_IID
 
