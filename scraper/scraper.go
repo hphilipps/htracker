@@ -1,8 +1,6 @@
 package scraper
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"net/http"
 	"regexp"
 	"time"
@@ -12,6 +10,7 @@ import (
 	"github.com/geziyor/geziyor/export"
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/exporter"
+	"gitlab.com/henri.philipps/htracker/service"
 	"golang.org/x/exp/slog"
 )
 
@@ -19,8 +18,8 @@ import (
 type Scraper struct {
 	*geziyor.Geziyor
 
-	Sites  []*htracker.Site
-	Logger *slog.Logger
+	Subscriptions []*htracker.Subscription
+	Logger        *slog.Logger
 
 	/*** Geziyor Opts ***/
 
@@ -50,48 +49,48 @@ type Scraper struct {
 	UserAgent string
 }
 
-// newParseFunc is returning a new parser func, setup to parse the given site
+// newParseFunc is returning a new parser func, setup to parse the site content for the given subscription.
 // and send the results as siteArchive to the Exports channel.
-func newParseFunc(site *htracker.Site, logger *slog.Logger) func(*geziyor.Geziyor, *client.Response) {
+func newParseFunc(subscription *htracker.Subscription, logger *slog.Logger) func(*geziyor.Geziyor, *client.Response) {
 	return func(g *geziyor.Geziyor, r *client.Response) {
 		var content []byte
 
 		if r.Response.StatusCode >= http.StatusBadRequest {
-			logger.Warn("got error status code", "code", r.Response.StatusCode, "url", site.URL)
+			logger.Warn("got error status code", "code", r.Response.StatusCode, "url", subscription.URL)
 			return
 		}
 
-		if site.Filter == "" {
+		if subscription.Filter == "" {
 			content = r.Body
 		} else if r.HTMLDoc != nil {
-			content = []byte(r.HTMLDoc.Find(site.Filter).Text())
+			content = []byte(r.HTMLDoc.Find(subscription.Filter).Text())
 		} else {
-			exp, err := regexp.Compile(site.Filter)
+			exp, err := regexp.Compile(subscription.Filter)
 			if err != nil {
-				logger.Error("ParseFunc failed to compile regexp", err, slog.String("regexp", site.Filter), slog.String("site", site.URL))
+				logger.Error("ParseFunc failed to compile regexp", err, slog.String("regexp", subscription.Filter), slog.String("site", subscription.URL))
 				return
 			}
 			content = exp.Find(r.Body)
 		}
 
-		sa := &htracker.SiteContent{
-			Site:        site,
-			LastChecked: time.Now(),
-			Content:     content,
-			Checksum:    fmt.Sprintf("%x", sha256.Sum256(content)),
+		sa := &htracker.Site{
+			Subscription: subscription,
+			LastChecked:  time.Now(),
+			Content:      content,
+			Checksum:     service.Checksum(content),
 		}
 
 		g.Exports <- sa
 	}
 }
 
-// NewScraper is returning a new Scraper to scrape given web sites.
-func NewScraper(sites []*htracker.Site, opts ...Opt) *Scraper {
+// NewScraper is returning a new Scraper to scrape the sites of the given subscriptions.
+func NewScraper(subscriptions []*htracker.Subscription, opts ...Opt) *Scraper {
 
 	scraper := &Scraper{
-		Sites:     sites,
-		Logger:    slog.Default(),
-		UserAgent: "HTracker/Geziyor 1.0",
+		Subscriptions: subscriptions,
+		Logger:        slog.Default(),
+		UserAgent:     "HTracker/Geziyor 1.0",
 	}
 
 	for _, o := range opts {
@@ -112,13 +111,13 @@ func NewScraper(sites []*htracker.Site, opts ...Opt) *Scraper {
 	}
 
 	gcfg.StartRequestsFunc = func(g *geziyor.Geziyor) {
-		for _, site := range scraper.Sites {
-			if site.UseChrome {
+		for _, subscription := range scraper.Subscriptions {
+			if subscription.UseChrome {
 				// using external chrome browser for rendering java script
-				g.GetRendered(site.URL, newParseFunc(site, scraper.Logger))
+				g.GetRendered(subscription.URL, newParseFunc(subscription, scraper.Logger))
 			} else {
 				// directly scrape the plain web site content without rendering JS
-				g.Get(site.URL, newParseFunc(site, scraper.Logger))
+				g.Get(subscription.URL, newParseFunc(subscription, scraper.Logger))
 			}
 		}
 	}

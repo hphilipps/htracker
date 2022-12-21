@@ -31,7 +31,7 @@ func runIntegrationTests() bool {
 
 func TestScraper(t *testing.T) {
 
-	sites := []*htracker.Site{
+	sites := []*htracker.Subscription{
 		{URL: "https://httpbin.org/anything"},
 		{URL: "http://quotes.toscrape.com/"},
 		{URL: "https://httpbin.org/anything/1"},

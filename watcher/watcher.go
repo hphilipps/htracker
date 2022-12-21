@@ -15,24 +15,24 @@ import (
 
 // Watcher is scraping subscribed sites in regular intervals.
 type Watcher struct {
-	archive       service.SiteArchive
-	subscriptions service.Subscription
-	logger        *slog.Logger
-	interval      time.Duration
-	batchSize     int
-	threads       int
-	scraperOpts   []scraper.Opt
+	archive     service.SiteArchive
+	subSvc      service.SubscriptionSvc
+	logger      *slog.Logger
+	interval    time.Duration
+	batchSize   int
+	threads     int
+	scraperOpts []scraper.Opt
 }
 
 // NewWatcher is returning a new Watcher instance.
-func NewWatcher(archive service.SiteArchive, subscriptions service.Subscription, opts ...Opt) *Watcher {
+func NewWatcher(archive service.SiteArchive, subSvc service.SubscriptionSvc, opts ...Opt) *Watcher {
 	watcher := &Watcher{
-		archive:       archive,
-		subscriptions: subscriptions,
-		logger:        slog.Default(),
-		interval:      time.Hour,
-		batchSize:     4,
-		threads:       2,
+		archive:   archive,
+		subSvc:    subSvc,
+		logger:    slog.Default(),
+		interval:  time.Hour,
+		batchSize: 4,
+		threads:   2,
 	}
 
 	for _, opt := range opts {
@@ -59,7 +59,7 @@ func WithScraperOpts(opts ...scraper.Opt) Opt {
 	}
 }
 
-// WithBatchSize sets the size of the batch of sites given to a Scraper instance for processing.
+// WithBatchSize sets the size of the batch of subscriptions given to a Scraper instance for processing.
 func WithBatchSize(bs int) Opt {
 	return func(w *Watcher) {
 		w.batchSize = bs
@@ -80,49 +80,49 @@ func WithLogger(logger *slog.Logger) Opt {
 	}
 }
 
-// GenerateScrapeList is returning a list of Sites to be scraped by going through
+// GenerateScrapeList is returning a list of Subscriptions to be scraped by going through
 // all subscriptions and deduplicating them.
-func (w *Watcher) GenerateScrapeList() (sites []*htracker.Site, err error) {
+func (w *Watcher) GenerateScrapeList() (subscriptions []*htracker.Subscription, err error) {
 
 	// set of unique sites for deduplication of scrape list
 	siteSet := map[string]bool{}
 
-	subscribers, err := w.subscriptions.GetSubscribers()
+	subscribers, err := w.subSvc.GetSubscribers()
 	if err != nil {
-		return sites, fmt.Errorf("service.Subscription.GetSubscribers() - %w", err)
+		return subscriptions, fmt.Errorf("SubscriptionSvc.GetSubscribers(): %w", err)
 	}
 
-	for _, sub := range subscribers {
-		for _, site := range sub.Sites {
-			// deduplicate sites
-			if !siteSet[site.URL+site.Filter+site.ContentType] {
-				sites = append(sites, site)
-				siteSet[site.URL+site.Filter+site.ContentType] = true
+	for _, subscriber := range subscribers {
+		for _, subscription := range subscriber.Subscriptions {
+			// deduplicate subscriptions
+			if !siteSet[subscription.URL+subscription.Filter+subscription.ContentType] {
+				subscriptions = append(subscriptions, subscription)
+				siteSet[subscription.URL+subscription.Filter+subscription.ContentType] = true
 			}
 		}
 	}
 
-	return sites, nil
+	return subscriptions, nil
 }
 
-// RunScrapers is starting up worker threads to scrape the given sites and waits for them to finish.
+// RunScrapers is starting up worker threads to scrape the given subscriptions and waits for them to finish.
 // When all scrapers finished there still might be exporters processing the results asynchronously.
-func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error {
+func (w *Watcher) RunScrapers(ctx context.Context, subscriptions []*htracker.Subscription) error {
 	tctx, _ := context.WithTimeout(ctx, w.interval)
 	wg := &sync.WaitGroup{}
-	batches := make(chan []*htracker.Site, w.threads)
+	batches := make(chan []*htracker.Subscription, w.threads)
 
 	// spin up workers
 	w.startWorkers(tctx, batches, wg)
 
-	batch := []*htracker.Site{}
+	batch := []*htracker.Subscription{}
 	count := 0
-	last := len(sites) - 1
+	last := len(subscriptions) - 1
 
-	// send batches of sites to workers for scraping
-	for i, site := range sites {
+	// send batches of subscriptions to workers for scraping
+	for i, sub := range subscriptions {
 		count++
-		batch = append(batch, site)
+		batch = append(batch, sub)
 		if count == w.batchSize || i == last {
 			select {
 			case batches <- batch:
@@ -131,7 +131,7 @@ func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error
 				return tctx.Err()
 			}
 			count = 0
-			batch = []*htracker.Site{}
+			batch = []*htracker.Subscription{}
 		}
 	}
 
@@ -144,8 +144,8 @@ func (w *Watcher) RunScrapers(ctx context.Context, sites []*htracker.Site) error
 	return nil
 }
 
-// startWorkers is spinning up scraper threads for concurrent processing of batches of sites.
-func (w *Watcher) startWorkers(ctx context.Context, batches chan []*htracker.Site, wg *sync.WaitGroup) {
+// startWorkers is spinning up scraper threads for concurrent processing of batches of subscriptions.
+func (w *Watcher) startWorkers(ctx context.Context, batches chan []*htracker.Subscription, wg *sync.WaitGroup) {
 
 	exporters := []exporter.Interface{exporter.NewExporter(ctx, w.archive)}
 
@@ -157,11 +157,11 @@ func (w *Watcher) startWorkers(ctx context.Context, batches chan []*htracker.Sit
 		go func() {
 			defer wg.Done()
 			for {
-				w.logger.Debug("watcher: waiting for next batch of sites to process", slog.Int("worker", workerNr))
+				w.logger.Debug("watcher: waiting for next batch of subscriptions to process", slog.Int("worker", workerNr))
 				select {
 				case batch, ok := <-batches:
 					if !ok {
-						w.logger.Debug("watcher: no more sites to process - worker shutting down", slog.Int("worker", workerNr))
+						w.logger.Debug("watcher: no more subscriptions to process - worker shutting down", slog.Int("worker", workerNr))
 						return
 					}
 

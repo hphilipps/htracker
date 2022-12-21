@@ -30,7 +30,7 @@ func main() {
 	storage := memory.NewSiteStorage(logger)
 	archive := service.NewSiteArchive(storage)
 	exp := exporter.NewExporter(context.Background(), archive)
-	site := &htracker.Site{
+	subscription := &htracker.Subscription{
 		URL:         *urlFlag,
 		Filter:      *filterFlag,
 		ContentType: *contentTypeFlag,
@@ -42,45 +42,45 @@ func main() {
 	}
 
 	h1 := scraper.NewScraper(
-		[]*htracker.Site{site},
+		[]*htracker.Subscription{subscription},
 		opts...,
 	)
 
 	h2 := scraper.NewScraper(
-		[]*htracker.Site{site},
+		[]*htracker.Subscription{subscription},
 		opts...,
 	)
 
 	h1.Start()
 
-	sc, err := archive.Get(site)
+	site, err := archive.Get(subscription)
 	if err != nil {
 		logger.Error("db.Get() failed", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Site on 1st update: lastUdpdated: %v, lastChecked: %v, checksum: %s, diff: %s\ncontent: %s\n", sc.LastUpdated, sc.LastChecked, sc.Checksum, sc.Diff, sc.Content)
-	content1 := sc.Content
+	fmt.Printf("Site on 1st update: lastUdpdated: %v, lastChecked: %v, checksum: %s, diff: %s\ncontent: %s\n", site.LastUpdated, site.LastChecked, site.Checksum, site.Diff, site.Content)
+	content1 := site.Content
 
 	time.Sleep(time.Second)
 
 	h2.Start()
 
-	sc, err = archive.Get(site)
+	site, err = archive.Get(subscription)
 	if err != nil {
-		logger.Error("db.Get() failed", err)
+		logger.Error("svc.Get() failed", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Site on 2nd update: lastUdpdated: %v, lastChecked: %v, checksum: %s, diff: --%s--\ncontent: %s\n", sc.LastUpdated, sc.LastChecked, sc.Checksum, sc.Diff, sc.Content)
+	fmt.Printf("Site on 2nd update: lastUdpdated: %v, lastChecked: %v, checksum: %s, diff: --%s--\ncontent: %s\n", site.LastUpdated, site.LastChecked, site.Checksum, site.Diff, site.Content)
 
-	fmt.Println("len c1:", len(content1), "len c2:", len(sc.Content))
+	fmt.Println("len c1:", len(content1), "len c2:", len(site.Content))
 
 	for i, c := range content1 {
-		if c != sc.Content[i] {
-			fmt.Println(i, ": ", c, "!=", sc.Content[i])
+		if c != site.Content[i] {
+			fmt.Println(i, ": ", c, "!=", site.Content[i])
 			fmt.Println(string(content1)[i-5 : i+10])
-			fmt.Println(string(sc.Content)[i-5 : i+10])
+			fmt.Println(string(site.Content)[i-5 : i+10])
 
 			break
 		}
@@ -88,9 +88,9 @@ func main() {
 
 	subscriptionSvc := service.NewSubscriptionSvc(storage)
 
-	subscriptionSvc.Subscribe("email1", &htracker.Site{URL: "http://httpbin.org/anything/1"})
-	subscriptionSvc.Subscribe("email1", &htracker.Site{URL: "http://httpbin.org/anything/2"})
-	subscriptionSvc.Subscribe("email2", &htracker.Site{URL: "http://httpbin.org/anything/2"})
+	subscriptionSvc.Subscribe("email1", &htracker.Subscription{URL: "http://httpbin.org/anything/1"})
+	subscriptionSvc.Subscribe("email1", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
+	subscriptionSvc.Subscribe("email2", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
 
 	dbgLogger := slog.New(slog.HandlerOptions{Level: slog.LevelDebug}.NewTextHandler(os.Stdout))
 
@@ -101,7 +101,7 @@ func main() {
 		logger.Error("Watcher", err)
 	}
 
-	sa, err := archive.Get(&htracker.Site{URL: "http://httpbin.org/anything/2"})
+	sa, err := archive.Get(&htracker.Subscription{URL: "http://httpbin.org/anything/2"})
 	if err != nil {
 		logger.Error("ArchiveService", err)
 	}

@@ -15,8 +15,8 @@ import (
 
 // SiteArchive is an interface for a service that can store the state of scraped web sites (content, checksum etc).
 type SiteArchive interface {
-	Update(*htracker.SiteContent) (diff string, err error)
-	Get(site *htracker.Site) (content *htracker.SiteContent, err error)
+	Update(*htracker.Site) (diff string, err error)
+	Get(*htracker.Subscription) (*htracker.Site, error)
 }
 
 // NewSiteArchive is returning a new SiteArchive using the given storage backend.
@@ -29,62 +29,57 @@ type siteArchive struct {
 	storage storage.SiteStorage
 }
 
-// Update is updating the DB with the results of the latest scrape of a site.
-func (archive *siteArchive) Update(content *htracker.SiteContent) (diff string, err error) {
-	acontent, err := archive.storage.Find(content.Site)
+// Update is updating the archive with the results of the latest scrape of a site.
+func (archive *siteArchive) Update(site *htracker.Site) (diff string, err error) {
+	archivedSite, err := archive.storage.Get(site.Subscription)
 	if err != nil {
 		if errors.Is(err, htracker.ErrNotExist) {
-			// site archive not found - create new entry
-			if err := archive.storage.Add(content); err != nil {
-				return "", fmt.Errorf("ArchiveStorage.Add() - %w", err)
+			// site not found in archive - create new entry
+			if err := archive.storage.Add(site); err != nil {
+				return "", fmt.Errorf("ArchiveStorage.Add(): %w", err)
 			}
 			return "", nil
 		}
-		return "", fmt.Errorf("ArchiveStorage.Find() - %w", err)
-	}
-
-	// content unchanged
-	if acontent.Checksum == content.Checksum {
-		acontent.LastChecked = content.LastChecked
-		if err := archive.storage.Update(acontent); err != nil {
-			return "", fmt.Errorf("ArchiveStorage.Update() - %w", err)
-		}
-		return "", nil
+		return "", fmt.Errorf("ArchiveStorage.Find(): %w", err)
 	}
 
 	// content changed
-	acontent.LastChecked = content.LastChecked
-
-	diff = DiffText(string(acontent.Content), string(content.Content))
-	if diff == "" {
+	if archivedSite.Checksum != site.Checksum {
+		diff = DiffText(string(archivedSite.Content), string(site.Content))
 		// The diff function is ignoring whitespace changes as sometimes
 		// whitespace is rendered randomly. So it can happen that we see
-		// a changed checksum, but no diff. In this case we treat the site
-		// as not changed.
-		return "", nil
+		// a changed checksum, but no diff. In this case we treat the
+		// site as not changed.
+		if diff != "" {
+			site.Diff = diff
+			site.LastUpdated = site.LastChecked
+			if err := archive.storage.Update(site); err != nil {
+				return diff, fmt.Errorf("ArchiveStorage.Update() - %w", err)
+			}
+			return diff, nil
+		}
 	}
 
-	acontent.Diff = diff
-	acontent.LastUpdated = content.LastChecked
-	acontent.Content = content.Content
-	acontent.Checksum = content.Checksum
-
-	if err := archive.storage.Update(acontent); err != nil {
-		return acontent.Diff, fmt.Errorf("ArchiveStorage.Update() - %w", err)
+	// content unchanged
+	archivedSite.LastChecked = site.LastChecked
+	if err := archive.storage.Update(archivedSite); err != nil {
+		return "", fmt.Errorf("ArchiveStorage.Update() - %w", err)
 	}
-	return acontent.Diff, nil
+
+	return "", nil
 }
 
 // Get is returning metadata, checksum and content of a site in the DB identified by URL, filter and contentType.
-func (archive *siteArchive) Get(site *htracker.Site) (*htracker.SiteContent, error) {
-	content, err := archive.storage.Find(site)
+func (archive *siteArchive) Get(subscription *htracker.Subscription) (*htracker.Site, error) {
+	content, err := archive.storage.Get(subscription)
 	if err != nil {
-		return &htracker.SiteContent{}, fmt.Errorf("ArchiveStorage.Find() - %w", err)
+		return &htracker.Site{}, fmt.Errorf("ArchiveStorage.Get(): %w", err)
 	}
 
 	return content, nil
 }
 
+// DiffPrintAsText is a helper function for formatting a diff as text.
 func DiffPrintAsText(diffs []diffmatchpatch.Diff) string {
 	var buff bytes.Buffer
 	for _, diff := range diffs {
@@ -130,6 +125,7 @@ func DiffText(str1, str2 string) string {
 	return DiffPrintAsText(dmp.DiffCleanupSemantic(diffs))
 }
 
+// Checksum is calclating a checksum of the given data.
 func Checksum(data []byte) string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
