@@ -10,7 +10,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func ArchiveService_Update(t *testing.T) {
+func Test_ArchiveService_Update(t *testing.T) {
 
 	storage := memory.NewSiteStorage(slog.Default())
 	svc := NewSiteArchive(storage)

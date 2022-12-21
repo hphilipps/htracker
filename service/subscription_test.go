@@ -133,7 +133,6 @@ func TestSubscriptionSvc_Unsubscribe(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			if err := svc.Unsubscribe(tt.args.email, tt.args.subscription); (err != nil) != tt.wantErr {
 				t.Errorf("svc.Unsubscribe() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -164,7 +163,6 @@ func TestSubscriptionSvc_Unsubscribe(t *testing.T) {
 }
 
 func TestSubscriptionSvc_GetSubscriptionsBySubscriber(t *testing.T) {
-
 	type args struct {
 		email string
 	}
@@ -222,7 +220,6 @@ func TestSubscriptionSvc_GetSubscriptionsBySubscriber(t *testing.T) {
 }
 
 func TestSubscriptionSvc_GetSubscribersBySubscription(t *testing.T) {
-
 	type args struct {
 		subscription *htracker.Subscription
 	}
@@ -256,7 +253,8 @@ func TestSubscriptionSvc_GetSubscribersBySubscription(t *testing.T) {
 		{name: "get sub1 subscribers", args: args{subscription: sub1}, wantEmails: []string{email1, email2}, wantErr: false},
 		{name: "get sub2 subscribers", args: args{subscription: sub2}, wantEmails: []string{email1, email2}, wantErr: false},
 		{name: "get sub3 subscribers", args: args{subscription: sub3}, wantEmails: []string{email1}, wantErr: false},
-		{name: "get subscribers to nonexistent subscription", args: args{subscription: &htracker.Subscription{URL: "nowhere.test/foo"}}, wantEmails: []string{}, wantErr: false},
+		{name: "get subscribers to nonexistent subscription",
+			args: args{subscription: &htracker.Subscription{URL: "nowhere.test/foo"}}, wantEmails: []string{}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

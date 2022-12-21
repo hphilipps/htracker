@@ -74,14 +74,14 @@ func (db *memDB) Update(site *htracker.Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	for _, s := range db.archive {
-		if site.Subscription.Equals(s.Subscription) {
-			s.Subscription = site.Subscription
-			s.LastChecked = site.LastChecked
-			s.LastUpdated = site.LastUpdated
-			s.Diff = site.Diff
-			s.Content = site.Content
-			s.Checksum = site.Checksum
+	for _, asite := range db.archive {
+		if site.Subscription.Equals(asite.Subscription) {
+			asite.Subscription = site.Subscription
+			asite.LastChecked = site.LastChecked
+			asite.LastUpdated = site.LastUpdated
+			asite.Diff = site.Diff
+			asite.Content = site.Content
+			asite.Checksum = site.Checksum
 
 			return nil
 		}
