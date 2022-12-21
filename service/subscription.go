@@ -62,15 +62,15 @@ func (svc *subscriptionSvc) Subscribe(email string, subscription *htracker.Subsc
 
 // GetSubscriptionsBySubscribers returns a list of subscriptions for the given subscriber.
 func (svc *subscriptionSvc) GetSubscriptionsBySubscriber(email string) ([]*htracker.Subscription, error) {
-	sites, err := svc.storage.FindBySubscriber(email)
+	subscriptions, err := svc.storage.FindBySubscriber(email)
 	if err != nil {
-		return sites, fmt.Errorf("storage.FindBySubscriber(): %w", err)
+		return subscriptions, fmt.Errorf("storage.FindBySubscriber(): %w", err)
 	}
 
-	return sites, nil
+	return subscriptions, nil
 }
 
-// GetSubscribersBySubscription returns a list of subscribed emails for a given site.
+// GetSubscribersBySubscription returns a list of subscribed emails for a given subscription.
 func (svc *subscriptionSvc) GetSubscribersBySubscription(subscription *htracker.Subscription) (subscribers []*Subscriber, err error) {
 	storSubscribers, err := svc.storage.FindBySubscription(subscription)
 	if err != nil {
