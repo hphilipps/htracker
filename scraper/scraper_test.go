@@ -31,7 +31,7 @@ func runIntegrationTests() bool {
 
 func TestScraper(t *testing.T) {
 
-	sites := []*htracker.Subscription{
+	subscriptions := []*htracker.Subscription{
 		{URL: "https://httpbin.org/anything"},
 		{URL: "http://quotes.toscrape.com/"},
 		{URL: "https://httpbin.org/anything/1"},
@@ -41,35 +41,35 @@ func TestScraper(t *testing.T) {
 	storage := memory.NewSiteStorage(slog.Default())
 	archive := service.NewSiteArchive(storage)
 	exp := exporter.NewExporter(context.Background(), archive)
-	scraper := NewScraper(sites, WithExporters([]exporter.Interface{exp}))
+	scraper := NewScraper(subscriptions, WithExporters([]exporter.Interface{exp}))
 
 	date := time.Now()
 	scraper.Start()
 
-	for _, s := range sites {
-		sa, err := archive.Get(s)
+	for _, sub := range subscriptions {
+		site, err := archive.Get(sub)
 
 		if err != nil {
-			t.Errorf("MemoryDB.GetSite() failed: %v", err)
+			t.Errorf("svc.Get() failed: %v", err)
 		}
 
-		if sa.LastUpdated.Before(date) {
-			t.Errorf("Expected lastUpdated to be after %v, got %v", date, sa.LastUpdated)
+		if site.LastUpdated.Before(date) {
+			t.Errorf("Expected lastUpdated to be after %v, got %v", date, site.LastUpdated)
 		}
 
-		if !sa.LastUpdated.Equal(sa.LastChecked) {
-			t.Errorf("Expected lastUpdated (%v) to be equal to lastChecked (%v)", sa.LastUpdated, sa.LastChecked)
+		if !site.LastUpdated.Equal(site.LastChecked) {
+			t.Errorf("Expected lastUpdated (%v) to be equal to lastChecked (%v)", site.LastUpdated, site.LastChecked)
 		}
 
-		if len(sa.Content) < 10 {
-			t.Errorf("Expected content length to be greater then 10, got %d", len(sa.Content))
+		if len(site.Content) < 10 {
+			t.Errorf("Expected content length to be greater then 10, got %d", len(site.Content))
 		}
 
-		if sa.Checksum == "" {
+		if site.Checksum == "" {
 			t.Errorf("Expected checksum not to be empty")
 		}
 
-		if sa.Diff != "" {
+		if site.Diff != "" {
 			t.Errorf("Expected diff to be empty")
 		}
 	}
