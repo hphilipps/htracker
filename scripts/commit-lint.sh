@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 regexp='^(?:ci|feat|fix|docs|style|refactor|revert|perf|test|chore)\(?(?:\w+|\s|\-|_)?\)?:\s\w+'
 
