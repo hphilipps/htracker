@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"gitlab.com/henri.philipps/htracker"
@@ -80,7 +79,7 @@ func (svc *subscriptionSvc) AddSubscriber(subscriber *Subscriber) error {
 		return fmt.Errorf("storage.SubscriberCount(): %w", err)
 	}
 	if count == svc.subscriberLimit {
-		return errors.New("can't add new subscriber - subscriber limit reached")
+		return fmt.Errorf("can't add new subscriber - reached %d subscribers: %w", count, htracker.ErrLimit)
 	}
 
 	limit := subscriber.SubscriptionLimit
@@ -106,7 +105,7 @@ func (svc *subscriptionSvc) Subscribe(email string, subscription *htracker.Subsc
 	}
 
 	if subscriber.SubscriptionLimit > 0 && len(subscriber.Subscriptions) >= subscriber.SubscriptionLimit {
-		return fmt.Errorf("can't add new subscription - subscription limit of %d reached", subscriber.SubscriptionLimit)
+		return fmt.Errorf("can't add new subscription - reached %d subscriptions: %w", subscriber.SubscriptionLimit, htracker.ErrLimit)
 	}
 
 	err = svc.storage.AddSubscription(email, subscription)
