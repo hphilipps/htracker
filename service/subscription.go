@@ -11,6 +11,7 @@ import (
 // SubscriptionSvc is an interface for a service managing subscriptions to updates of web sites
 // to be scraped.
 type SubscriptionSvc interface {
+	AddSubscriber(*Subscriber) error
 	Subscribe(email string, subscription *htracker.Subscription) error
 	GetSubscriptionsBySubscriber(email string) ([]*htracker.Subscription, error)
 	GetSubscribersBySubscription(*htracker.Subscription) ([]*Subscriber, error)
@@ -21,22 +22,29 @@ type SubscriptionSvc interface {
 
 // Subscriber is describing a user holding subscriptions to sites.
 type Subscriber struct {
-	Email         string
-	Subscriptions []*htracker.Subscription
+	Email             string
+	Subscriptions     []*htracker.Subscription
+	SubscriptionLimit int
 }
 
 // subscriptionSvc is implementing the SubscriptionSvc interface.
 type subscriptionSvc struct {
-	storage storage.SubscriptionStorage
-	logger  slog.Logger
+	storage           storage.SubscriptionStorage
+	logger            slog.Logger
+	subscriptionLimit int
+	subscriberLimit   int
 }
 
 // compile time check of interface implementation.
 var _ SubscriptionSvc = &subscriptionSvc{}
 
 // NewSubscriptionSvc is returning a new SubscriptionService using the given storage backend.
-func NewSubscriptionSvc(storage storage.SubscriptionStorage) *subscriptionSvc {
-	return &subscriptionSvc{storage: storage}
+func NewSubscriptionSvc(storage storage.SubscriptionStorage, opts ...SubscriptionSvcOpt) *subscriptionSvc {
+	svc := &subscriptionSvc{storage: storage, subscriptionLimit: 100, subscriberLimit: 100}
+	for _, opt := range opts {
+		opt(svc)
+	}
+	return svc
 }
 
 // SubScriptionSvcOpt is representing functional options for the SubscriptionSvc.
@@ -49,10 +57,58 @@ func WithLogger(logger *slog.Logger) SubscriptionSvcOpt {
 	}
 }
 
+// WithSubscriptionLimit is setting the maximum number of subscriptions per subscriber.
+func WithSubscriptionLimit(limit int) SubscriptionSvcOpt {
+	return func(svc *subscriptionSvc) {
+		svc.subscriptionLimit = limit
+	}
+}
+
+// WithSubscriberLimit is setting the maximum number of subscribers.
+func WithSubscriberLimit(limit int) SubscriptionSvcOpt {
+	return func(svc *subscriptionSvc) {
+		svc.subscriberLimit = limit
+	}
+}
+
+// AddSubscriber is adding a new subscriber.
+// A SubscriptionLimit of -1 means unlimited subscriptions.
+func (svc *subscriptionSvc) AddSubscriber(subscriber *Subscriber) error {
+	count, err := svc.storage.SubscriberCount()
+	if err != nil {
+		return fmt.Errorf("storage.SubscriberCount(): %w", err)
+	}
+	if count == svc.subscriberLimit {
+		return fmt.Errorf("can't add new subscriber - reached %d subscribers: %w", count, htracker.ErrLimit)
+	}
+
+	limit := subscriber.SubscriptionLimit
+	if limit == 0 {
+		limit = svc.subscriptionLimit
+	}
+	sub := &storage.Subscriber{Email: subscriber.Email, SubscriptionLimit: limit}
+
+	err = svc.storage.AddSubscriber(sub)
+	if err != nil {
+		return fmt.Errorf("storage.AddSubscriber(): %w", err)
+	}
+
+	return nil
+}
+
 // Subscribe is adding a subscription for the given email and will return
-// an error if the subscription already exists.
+// an error if the subscription already exists or we hit the subscription limit.
 func (svc *subscriptionSvc) Subscribe(email string, subscription *htracker.Subscription) error {
-	err := svc.storage.AddSubscription(email, subscription)
+	subscriber, err := svc.storage.GetSubscriber(email)
+	if err != nil {
+		return fmt.Errorf("storage.GetSubscriber(): %w", err)
+	}
+
+	if subscriber.SubscriptionLimit > 0 && len(subscriber.Subscriptions) >= subscriber.SubscriptionLimit {
+		return fmt.Errorf("can't add new subscription - reached %d subscriptions: %w", subscriber.SubscriptionLimit, htracker.ErrLimit)
+	}
+
+	err = svc.storage.AddSubscription(email, subscription)
 	if err != nil {
 		return fmt.Errorf("storage.AddSubscription(): %w", err)
 	}

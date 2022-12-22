@@ -25,9 +25,9 @@ func TestWatcher_GenerateScrapeList(t *testing.T) {
 	sub1b := &htracker.Subscription{URL: "site1.test", Filter: "filter1", ContentType: "html"}
 	sub2 := &htracker.Subscription{URL: "site2.test", Filter: "filter1", ContentType: "text"}
 
-	subscriber1 := &service.Subscriber{email1, []*htracker.Subscription{sub1}}
-	subscriber2 := &service.Subscriber{email2, []*htracker.Subscription{sub1, sub1a, sub1b}}
-	subscriber3 := &service.Subscriber{email3, []*htracker.Subscription{sub1, sub1a, sub1b, sub2}}
+	subscriber1 := &service.Subscriber{email1, []*htracker.Subscription{sub1}, -1}
+	subscriber2 := &service.Subscriber{email2, []*htracker.Subscription{sub1, sub1a, sub1b}, -1}
+	subscriber3 := &service.Subscriber{email3, []*htracker.Subscription{sub1, sub1a, sub1b, sub2}, -1}
 
 	tests := []struct {
 		name              string
@@ -56,6 +56,9 @@ func TestWatcher_GenerateScrapeList(t *testing.T) {
 			}
 
 			for _, subscriber := range tt.subscribers {
+				if err := svc.AddSubscriber(subscriber); err != nil {
+					t.Errorf("failed to add subscriber %s during setup", subscriber.Email)
+				}
 				for _, subscription := range subscriber.Subscriptions {
 					if err := svc.Subscribe(subscriber.Email, subscription); err != nil {
 						t.Errorf("subscriber %s failed to subscribe to site %s during setup", subscriber.Email, subscription.URL)

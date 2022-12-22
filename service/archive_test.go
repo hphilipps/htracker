@@ -11,7 +11,6 @@ import (
 )
 
 func Test_ArchiveService_Update(t *testing.T) {
-
 	storage := memory.NewSiteStorage(slog.Default())
 	svc := NewSiteArchive(storage)
 
