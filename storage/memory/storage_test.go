@@ -152,3 +152,37 @@ func Test_memDB_GetSubscriber(t *testing.T) {
 		})
 	}
 }
+
+func Test_memDB_AddSubscriber(t *testing.T) {
+	type args struct {
+		subscriber *storage.Subscriber
+	}
+
+	sub1 := &storage.Subscriber{Email: "email1"}
+	sub2 := &storage.Subscriber{Email: "email2"}
+
+	tests := []struct {
+		name            string
+		args            args
+		wantSubscribers []*storage.Subscriber
+		wantErr         bool
+	}{
+		{name: "add subscriber1", args: args{subscriber: sub1}, wantSubscribers: []*storage.Subscriber{sub1}, wantErr: false},
+		{name: "add subscriber2", args: args{subscriber: sub2}, wantSubscribers: []*storage.Subscriber{sub1, sub2}, wantErr: false},
+		{name: "add existing subscriber", args: args{subscriber: sub1}, wantSubscribers: []*storage.Subscriber{sub1, sub2}, wantErr: true},
+	}
+
+	db := &memDB{
+		subscribers: []*storage.Subscriber{},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := db.AddSubscriber(tt.args.subscriber); (err != nil) != tt.wantErr {
+				t.Errorf("memDB.AddSubscriber() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(db.subscribers, tt.wantSubscribers) {
+				t.Errorf("Expected subscribers %v, got %v", db.subscribers, tt.wantSubscribers)
+			}
+		})
+	}
+}

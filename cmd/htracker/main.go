@@ -88,6 +88,8 @@ func main() {
 
 	subscriptionSvc := service.NewSubscriptionSvc(storage)
 
+	subscriptionSvc.AddSubscriber(&service.Subscriber{Email: "email1"})
+	subscriptionSvc.AddSubscriber(&service.Subscriber{Email: "email2"})
 	subscriptionSvc.Subscribe("email1", &htracker.Subscription{URL: "http://httpbin.org/anything/1"})
 	subscriptionSvc.Subscribe("email1", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
 	subscriptionSvc.Subscribe("email2", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})

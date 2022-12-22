@@ -19,10 +19,15 @@ func TestSubscriptionSvc_Subscribe(t *testing.T) {
 	sub1 := &htracker.Subscription{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
 	sub2 := &htracker.Subscription{URL: "http://site2.example/blub", Filter: "bar", ContentType: "byte", Interval: time.Minute}
 	sub3 := &htracker.Subscription{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
+	sub4 := &htracker.Subscription{URL: "http://site4.example/blah", Filter: "foo", ContentType: "text", Interval: time.Minute}
 
 	email1 := "email1@foo.test"
 	email2 := "email2@foo.test"
 	email3 := "email3@foo.test"
+	email4 := "toomuch@foo.test"
+
+	subscriberLimit := 3
+	subscriptionLimit := 2
 
 	tests := []struct {
 		name              string
@@ -44,37 +49,47 @@ func TestSubscriptionSvc_Subscribe(t *testing.T) {
 			args: args{email: email1, subscription: sub1}, wantSubscriptions: []*htracker.Subscription{sub1, sub2}, wantErr: true},
 		{name: "subscribe email1 to equal site again",
 			args: args{email: email1, subscription: sub3}, wantSubscriptions: []*htracker.Subscription{sub1, sub2}, wantErr: true},
+		{name: "go over subscription limit",
+			args: args{email: email1, subscription: sub4}, wantSubscriptions: []*htracker.Subscription{sub1, sub2}, wantErr: true},
+		{name: "subscribe with unknown subscriber",
+			args: args{email: email4, subscription: sub4}, wantSubscriptions: nil, wantErr: true},
 	}
 
 	logger := slog.Default()
 	storage := memory.NewSubscriptionStorage(logger)
-	svc := NewSubscriptionSvc(storage)
+	svc := NewSubscriptionSvc(storage, WithSubscriberLimit(subscriberLimit), WithSubscriptionLimit(subscriptionLimit))
+	svc.AddSubscriber(&Subscriber{Email: email1, SubscriptionLimit: subscriptionLimit})
+	svc.AddSubscriber(&Subscriber{Email: email2})
+	svc.AddSubscriber(&Subscriber{Email: email3})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := svc.Subscribe(tt.args.email, tt.args.subscription); (err != nil) != tt.wantErr {
-				t.Errorf("svc.Subscribe() error = %v, wantErr %v", err, tt.wantErr)
+			subErr := svc.Subscribe(tt.args.email, tt.args.subscription)
+			if (subErr != nil) != tt.wantErr {
+				t.Errorf("svc.Subscribe() error = %v, wantErr %v", subErr, tt.wantErr)
 			}
 
-			gotSubscriptions, err := svc.GetSubscriptionsBySubscriber(tt.args.email)
-			if err != nil {
-				t.Errorf("svc.Subscribe() - validation with svc.GetSubscriptionsBySubscriber() failed: %v", err)
-			}
+			if subErr == nil {
+				gotSubscriptions, err := svc.GetSubscriptionsBySubscriber(tt.args.email)
+				if err != nil {
+					t.Errorf("svc.Subscribe() - validation with svc.GetSubscriptionsBySubscriber() failed: %v", err)
+				}
 
-			if len(tt.wantSubscriptions) != len(gotSubscriptions) {
-				t.Errorf("Expected %d subscriptions for %s, got %d", len(tt.wantSubscriptions), tt.args.email, len(gotSubscriptions))
-			}
-			for _, i := range tt.wantSubscriptions {
-				found := false
-				for _, j := range gotSubscriptions {
-					if i.Equals(j) {
-						found = true
+				if len(tt.wantSubscriptions) != len(gotSubscriptions) {
+					t.Errorf("Expected %d subscriptions for %s, got %d", len(tt.wantSubscriptions), tt.args.email, len(gotSubscriptions))
+				}
+				for _, i := range tt.wantSubscriptions {
+					found := false
+					for _, j := range gotSubscriptions {
+						if i.Equals(j) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Errorf("Expected to find site %s in subscriptions of %s", i.URL, tt.args.email)
 						break
 					}
-				}
-				if !found {
-					t.Errorf("Expected to find site %s in subscriptions of %s", i.URL, tt.args.email)
-					break
 				}
 			}
 		})
@@ -99,6 +114,9 @@ func TestSubscriptionSvc_Unsubscribe(t *testing.T) {
 	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
+	svc.AddSubscriber(&Subscriber{Email: email1})
+	svc.AddSubscriber(&Subscriber{Email: email2})
+	svc.AddSubscriber(&Subscriber{Email: email3})
 	svc.Subscribe(email1, sub1)
 	svc.Subscribe(email1, sub2)
 	svc.Subscribe(email1, sub3)
@@ -179,6 +197,9 @@ func TestSubscriptionSvc_GetSubscriptionsBySubscriber(t *testing.T) {
 	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
+	svc.AddSubscriber(&Subscriber{Email: email1})
+	svc.AddSubscriber(&Subscriber{Email: email2})
+	svc.AddSubscriber(&Subscriber{Email: email3})
 	svc.Subscribe(email1, sub1)
 	svc.Subscribe(email1, sub2)
 	svc.Subscribe(email1, sub3)
@@ -236,6 +257,9 @@ func TestSubscriptionSvc_GetSubscribersBySubscription(t *testing.T) {
 	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
+	svc.AddSubscriber(&Subscriber{Email: email1})
+	svc.AddSubscriber(&Subscriber{Email: email2})
+	svc.AddSubscriber(&Subscriber{Email: email3})
 	svc.Subscribe(email1, sub1)
 	svc.Subscribe(email1, sub2)
 	svc.Subscribe(email1, sub3)
@@ -291,6 +315,9 @@ func TestSubscriptionSvc_GetSubscribers(t *testing.T) {
 	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
+	svc.AddSubscriber(&Subscriber{Email: email1})
+	svc.AddSubscriber(&Subscriber{Email: email2})
+	svc.AddSubscriber(&Subscriber{Email: email3})
 	svc.Subscribe(email1, sub1)
 	svc.Subscribe(email1, sub2)
 	svc.Subscribe(email1, sub3)
@@ -324,6 +351,7 @@ func TestSubscriptionSvc_DeleteSubscriber(t *testing.T) {
 	storage := memory.NewSubscriptionStorage(logger)
 	svc := NewSubscriptionSvc(storage)
 
+	svc.AddSubscriber(&Subscriber{Email: email1})
 	err := svc.Subscribe(email1, &htracker.Subscription{URL: "some.web.site.test/blah", Filter: "someFilter", ContentType: "text"})
 	if err != nil {
 		t.Fatalf("Failed to subscribe: %v", err)
@@ -358,6 +386,48 @@ func TestSubscriptionSvc_DeleteSubscriber(t *testing.T) {
 			}
 			if !found && tt.wantExist {
 				t.Errorf("svc.DeleteSubscriber() expected entry to still exist but it is gone")
+			}
+		})
+	}
+}
+
+func Test_subscriptionSvc_AddSubscriber(t *testing.T) {
+	type args struct {
+		subscriber *Subscriber
+	}
+
+	sub1 := &Subscriber{Email: "email1"}
+	sub2 := &Subscriber{Email: "email2"}
+	sub3 := &Subscriber{Email: "email3"}
+
+	tests := []struct {
+		name            string
+		args            args
+		wantSubscribers []*Subscriber
+		wantErr         bool
+	}{
+		{name: "add subscriber1", args: args{subscriber: sub1}, wantSubscribers: []*Subscriber{sub1}, wantErr: false},
+		{name: "add subscriber2", args: args{subscriber: sub2}, wantSubscribers: []*Subscriber{sub1, sub2}, wantErr: false},
+		{name: "go over limit", args: args{subscriber: sub3}, wantSubscribers: []*Subscriber{sub1, sub2}, wantErr: true},
+		{name: "add existing", args: args{subscriber: sub1}, wantSubscribers: []*Subscriber{sub1, sub2}, wantErr: true},
+	}
+
+	svc := &subscriptionSvc{
+		storage:         memory.NewSubscriptionStorage(slog.Default()),
+		subscriberLimit: 2,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := svc.AddSubscriber(tt.args.subscriber); (err != nil) != tt.wantErr {
+				t.Errorf("subscriptionSvc.AddSubscriber() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			gotSubscribers, err := svc.GetSubscribers()
+			if err != nil {
+				t.Errorf("GetSubscribers() failes: %v", err)
+			}
+			if !reflect.DeepEqual(gotSubscribers, tt.wantSubscribers) {
+				t.Errorf("Expected subscribers %v, got %v", tt.wantSubscribers, gotSubscribers)
 			}
 		})
 	}

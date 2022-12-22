@@ -126,6 +126,26 @@ func (db *memDB) FindBySubscription(subscription *htracker.Subscription) ([]*sto
 	return subscribers, nil
 }
 
+// SubscriberCount is returning the number of subscribers.
+func (db *memDB) SubscriberCount() (int, error) {
+	return len(db.subscribers), nil
+}
+
+// AddSubscriber adds a new subscriber.
+func (db *memDB) AddSubscriber(subscriber *storage.Subscriber) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for _, sub := range db.subscribers {
+		if sub.Email == subscriber.Email {
+			return fmt.Errorf("subscriber already exists (%s): %w", sub.Email, htracker.ErrAlreadyExists)
+		}
+	}
+
+	db.subscribers = append(db.subscribers, subscriber)
+	return nil
+}
+
 // GetAllSubscribers is returning all subscribers.
 func (db *memDB) GetAllSubscribers() ([]*storage.Subscriber, error) {
 	db.mu.Lock()
