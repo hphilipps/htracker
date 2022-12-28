@@ -16,6 +16,8 @@ import (
 
 func TestWatcher_GenerateScrapeList(t *testing.T) {
 
+	ctx := context.Background()
+
 	email1 := "email1@foo.bar"
 	email2 := "email2@foo.bar"
 	email3 := "email3@foo.bar"
@@ -56,11 +58,11 @@ func TestWatcher_GenerateScrapeList(t *testing.T) {
 			}
 
 			for _, subscriber := range tt.subscribers {
-				if err := svc.AddSubscriber(subscriber); err != nil {
+				if err := svc.AddSubscriber(ctx, subscriber); err != nil {
 					t.Errorf("failed to add subscriber %s during setup", subscriber.Email)
 				}
 				for _, subscription := range subscriber.Subscriptions {
-					if err := svc.Subscribe(subscriber.Email, subscription); err != nil {
+					if err := svc.Subscribe(ctx, subscriber.Email, subscription); err != nil {
 						t.Errorf("subscriber %s failed to subscribe to site %s during setup", subscriber.Email, subscription.URL)
 					}
 				}
@@ -89,6 +91,8 @@ func TestWatcher_RunScrapers(t *testing.T) {
 	type args struct {
 		sites []*htracker.Subscription
 	}
+
+	ctx := context.Background()
 
 	sub1 := &htracker.Subscription{URL: "https://httpbin.org/anything", Filter: "filter1", ContentType: "text"}
 	sub1a := &htracker.Subscription{URL: "https://httpbin.org/anything", Filter: "filter2", ContentType: "text"}
@@ -140,7 +144,7 @@ func TestWatcher_RunScrapers(t *testing.T) {
 			}
 			if err == nil {
 				for _, s := range tt.args.sites {
-					if _, err := w.archive.Get(s); err != nil {
+					if _, err := w.archive.Get(ctx, s); err != nil {
 						t.Errorf("SiteArchiveSvc.Get(%s) error: %v", s.URL, err)
 					}
 				}

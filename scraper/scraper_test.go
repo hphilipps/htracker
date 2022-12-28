@@ -47,7 +47,7 @@ func TestScraper(t *testing.T) {
 	scraper.Start()
 
 	for _, sub := range subscriptions {
-		site, err := archive.Get(sub)
+		site, err := archive.Get(context.Background(), sub)
 
 		if err != nil {
 			t.Errorf("svc.Get() failed: %v", err)

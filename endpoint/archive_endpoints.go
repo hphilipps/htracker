@@ -26,7 +26,7 @@ func (resp UpdateResp) Failed() error {
 
 func MakeUpdateEndpoint(svc service.SiteArchive) Endpoint[UpdateReq, UpdateResp] {
 	return func(ctx context.Context, req UpdateReq) (UpdateResp, error) {
-		diff, err := svc.Update(req.site)
+		diff, err := svc.Update(ctx, req.site)
 		return UpdateResp{diff: diff, err: err}, nil
 	}
 }
@@ -50,7 +50,7 @@ func (resp GetResp) Failed() error {
 
 func MakeGetEndpoint(svc service.SiteArchive) Endpoint[GetReq, GetResp] {
 	return func(ctx context.Context, req GetReq) (GetResp, error) {
-		site, err := svc.Get(req.subscription)
+		site, err := svc.Get(ctx, req.subscription)
 		return GetResp{site: site, err: err}, nil
 	}
 }

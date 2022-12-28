@@ -68,7 +68,7 @@ func TestExporter_Export(t *testing.T) {
 			Content: tc.content, Checksum: service.Checksum(tc.content)}
 		time.Sleep(time.Millisecond)
 
-		site, err := archive.Get(tc.subscription)
+		site, err := archive.Get(context.Background(), tc.subscription)
 		if err != nil {
 			t.Fatalf("%s: svc.Get() failed: %v", tc.name, err)
 		}

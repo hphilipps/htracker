@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ func Test_memDB_Get(t *testing.T) {
 		subscription *htracker.Subscription
 	}
 
+	ctx := context.Background()
 	date := time.Now()
 
 	sub1 := &htracker.Subscription{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
@@ -56,7 +58,7 @@ func Test_memDB_Get(t *testing.T) {
 				archive: tt.fields.archive,
 				logger:  slog.Default(),
 			}
-			gotSite, err := db.Get(tt.args.subscription)
+			gotSite, err := db.Get(ctx, tt.args.subscription)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("memDB.Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -73,6 +75,7 @@ func Test_memDB_Add(t *testing.T) {
 		site *htracker.Site
 	}
 
+	ctx := context.Background()
 	date := time.Now()
 
 	sub1 := &htracker.Subscription{URL: "http://site1.example/blah", Filter: "foo", ContentType: "text", Interval: time.Hour}
@@ -105,7 +108,7 @@ func Test_memDB_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := db.Add(tt.args.site); (err != nil) != tt.wantErr {
+			if err := db.Add(ctx, tt.args.site); (err != nil) != tt.wantErr {
 				t.Errorf("memDB.Add() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if got := db.archive; !reflect.DeepEqual(got, tt.wantSites) {
@@ -119,6 +122,8 @@ func Test_memDB_GetSubscriber(t *testing.T) {
 	type args struct {
 		email string
 	}
+
+	ctx := context.Background()
 
 	email1 := "email1"
 	email2 := "email2"
@@ -141,7 +146,7 @@ func Test_memDB_GetSubscriber(t *testing.T) {
 			db := &memDB{
 				subscribers: subscribers,
 			}
-			got, err := db.GetSubscriber(tt.args.email)
+			got, err := db.GetSubscriber(ctx, tt.args.email)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("memDB.GetSubscriber() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -157,6 +162,8 @@ func Test_memDB_AddSubscriber(t *testing.T) {
 	type args struct {
 		subscriber *storage.Subscriber
 	}
+
+	ctx := context.Background()
 
 	sub1 := &storage.Subscriber{Email: "email1"}
 	sub2 := &storage.Subscriber{Email: "email2"}
@@ -177,7 +184,7 @@ func Test_memDB_AddSubscriber(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := db.AddSubscriber(tt.args.subscriber); (err != nil) != tt.wantErr {
+			if err := db.AddSubscriber(ctx, tt.args.subscriber); (err != nil) != tt.wantErr {
 				t.Errorf("memDB.AddSubscriber() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(db.subscribers, tt.wantSubscribers) {

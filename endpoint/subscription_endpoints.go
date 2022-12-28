@@ -25,7 +25,7 @@ func (resp AddSubscriberResp) Failed() error {
 
 func MakeAddSubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[AddSubscriberReq, AddSubscriberResp] {
 	return func(ctx context.Context, req AddSubscriberReq) (AddSubscriberResp, error) {
-		err := svc.AddSubscriber(req.subscriber)
+		err := svc.AddSubscriber(ctx, req.subscriber)
 		return AddSubscriberResp{err: err}, nil
 	}
 }
@@ -49,7 +49,7 @@ func (resp SubscribeResp) Failed() error {
 
 func MakeSubscribeEndpoint(svc service.SubscriptionSvc) Endpoint[SubscribeReq, SubscribeResp] {
 	return func(ctx context.Context, req SubscribeReq) (SubscribeResp, error) {
-		err := svc.Subscribe(req.email, req.subscription)
+		err := svc.Subscribe(ctx, req.email, req.subscription)
 		return SubscribeResp{err: err}, nil
 	}
 }
@@ -73,7 +73,7 @@ func (resp GetSubscriptionsBySubscriberResp) Failed() error {
 
 func MakeGetSubscriptionsBySubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscriptionsBySubscriberReq, GetSubscriptionsBySubscriberResp] {
 	return func(ctx context.Context, req GetSubscriptionsBySubscriberReq) (GetSubscriptionsBySubscriberResp, error) {
-		subscriptions, err := svc.GetSubscriptionsBySubscriber(req.email)
+		subscriptions, err := svc.GetSubscriptionsBySubscriber(ctx, req.email)
 		return GetSubscriptionsBySubscriberResp{subscriptions: subscriptions, err: err}, nil
 	}
 }
@@ -97,7 +97,7 @@ func (resp GetSubscribersBySubscriptionResp) Failed() error {
 
 func MakeGetSubscribersBySubscriptionEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscribersBySubscriptionReq, GetSubscribersBySubscriptionResp] {
 	return func(ctx context.Context, req GetSubscribersBySubscriptionReq) (GetSubscribersBySubscriptionResp, error) {
-		subscribers, err := svc.GetSubscribersBySubscription(req.subscription)
+		subscribers, err := svc.GetSubscribersBySubscription(ctx, req.subscription)
 		return GetSubscribersBySubscriptionResp{subscribers: subscribers, err: err}, nil
 	}
 }
@@ -119,7 +119,7 @@ func (resp GetSubscribersResp) Failed() error {
 
 func MakeGetSubscribersEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscribersReq, GetSubscribersResp] {
 	return func(ctx context.Context, req GetSubscribersReq) (GetSubscribersResp, error) {
-		subscribers, err := svc.GetSubscribers()
+		subscribers, err := svc.GetSubscribers(ctx)
 		return GetSubscribersResp{subscribers: subscribers, err: err}, nil
 	}
 }
@@ -143,7 +143,7 @@ func (resp UnsubscribeResp) Failed() error {
 
 func MakeUnsubscribeEndpoint(svc service.SubscriptionSvc) Endpoint[UnsubscribeReq, UnsubscribeResp] {
 	return func(ctx context.Context, req UnsubscribeReq) (UnsubscribeResp, error) {
-		err := svc.Unsubscribe(req.email, req.subscription)
+		err := svc.Unsubscribe(ctx, req.email, req.subscription)
 		return UnsubscribeResp{err: err}, nil
 	}
 }
@@ -166,7 +166,7 @@ func (resp DeleteSubscriberResp) Failed() error {
 
 func MakeDeleteSubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[DeleteSubscriberReq, DeleteSubscriberResp] {
 	return func(ctx context.Context, req DeleteSubscriberReq) (DeleteSubscriberResp, error) {
-		err := svc.DeleteSubscriber(req.email)
+		err := svc.DeleteSubscriber(ctx, req.email)
 		return DeleteSubscriberResp{err: err}, nil
 	}
 }

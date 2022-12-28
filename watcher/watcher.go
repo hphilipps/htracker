@@ -87,7 +87,7 @@ func (w *Watcher) GenerateScrapeList() (subscriptions []*htracker.Subscription, 
 	// set of unique sites for deduplication of scrape list
 	siteSet := map[string]bool{}
 
-	subscribers, err := w.subSvc.GetSubscribers()
+	subscribers, err := w.subSvc.GetSubscribers(context.Background())
 	if err != nil {
 		return subscriptions, fmt.Errorf("SubscriptionSvc.GetSubscribers(): %w", err)
 	}
