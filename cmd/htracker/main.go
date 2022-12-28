@@ -26,6 +26,7 @@ func main() {
 
 	flag.Parse()
 
+	ctx := context.Background()
 	logger := slog.Default()
 	storage := memory.NewSiteStorage(logger)
 	archive := service.NewSiteArchive(storage)
@@ -53,7 +54,7 @@ func main() {
 
 	h1.Start()
 
-	site, err := archive.Get(subscription)
+	site, err := archive.Get(ctx, subscription)
 	if err != nil {
 		logger.Error("db.Get() failed", err)
 		os.Exit(1)
@@ -66,7 +67,7 @@ func main() {
 
 	h2.Start()
 
-	site, err = archive.Get(subscription)
+	site, err = archive.Get(ctx, subscription)
 	if err != nil {
 		logger.Error("svc.Get() failed", err)
 		os.Exit(1)
@@ -88,22 +89,22 @@ func main() {
 
 	subscriptionSvc := service.NewSubscriptionSvc(storage)
 
-	subscriptionSvc.AddSubscriber(&service.Subscriber{Email: "email1"})
-	subscriptionSvc.AddSubscriber(&service.Subscriber{Email: "email2"})
-	subscriptionSvc.Subscribe("email1", &htracker.Subscription{URL: "http://httpbin.org/anything/1"})
-	subscriptionSvc.Subscribe("email1", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
-	subscriptionSvc.Subscribe("email2", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
+	subscriptionSvc.AddSubscriber(ctx, &service.Subscriber{Email: "email1"})
+	subscriptionSvc.AddSubscriber(ctx, &service.Subscriber{Email: "email2"})
+	subscriptionSvc.Subscribe(ctx, "email1", &htracker.Subscription{URL: "http://httpbin.org/anything/1"})
+	subscriptionSvc.Subscribe(ctx, "email1", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
+	subscriptionSvc.Subscribe(ctx, "email2", &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
 
 	dbgLogger := slog.New(slog.HandlerOptions{Level: slog.LevelDebug}.NewTextHandler(os.Stdout))
 
 	w := watcher.NewWatcher(archive, subscriptionSvc, watcher.WithInterval(5*time.Second), watcher.WithLogger(dbgLogger))
 
-	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
-	if err := w.Start(ctx); err != nil {
+	tctx, _ := context.WithTimeout(ctx, 20*time.Second)
+	if err := w.Start(tctx); err != nil {
 		logger.Error("Watcher", err)
 	}
 
-	sa, err := archive.Get(&htracker.Subscription{URL: "http://httpbin.org/anything/2"})
+	sa, err := archive.Get(tctx, &htracker.Subscription{URL: "http://httpbin.org/anything/2"})
 	if err != nil {
 		logger.Error("ArchiveService", err)
 	}

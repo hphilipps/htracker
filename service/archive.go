@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -15,8 +16,8 @@ import (
 
 // SiteArchive is an interface for a service that can store the state of scraped web sites (content, checksum etc).
 type SiteArchive interface {
-	Update(*htracker.Site) (diff string, err error)
-	Get(*htracker.Subscription) (*htracker.Site, error)
+	Update(context.Context, *htracker.Site) (diff string, err error)
+	Get(context.Context, *htracker.Subscription) (*htracker.Site, error)
 }
 
 // NewSiteArchive is returning a new SiteArchive using the given storage backend.
@@ -30,12 +31,12 @@ type siteArchive struct {
 }
 
 // Update is updating the archive with the results of the latest scrape of a site.
-func (archive *siteArchive) Update(site *htracker.Site) (diff string, err error) {
-	archivedSite, err := archive.storage.Get(site.Subscription)
+func (archive *siteArchive) Update(ctx context.Context, site *htracker.Site) (diff string, err error) {
+	archivedSite, err := archive.storage.Get(ctx, site.Subscription)
 	if err != nil {
 		if errors.Is(err, htracker.ErrNotExist) {
 			// site not found in archive - create new entry
-			if err := archive.storage.Add(site); err != nil {
+			if err := archive.storage.Add(ctx, site); err != nil {
 				return "", fmt.Errorf("ArchiveStorage.Add(): %w", err)
 			}
 			return "", nil
@@ -53,7 +54,7 @@ func (archive *siteArchive) Update(site *htracker.Site) (diff string, err error)
 		if diff != "" {
 			site.Diff = diff
 			site.LastUpdated = site.LastChecked
-			if err := archive.storage.Update(site); err != nil {
+			if err := archive.storage.Update(ctx, site); err != nil {
 				return diff, fmt.Errorf("ArchiveStorage.Update() - %w", err)
 			}
 			return diff, nil
@@ -62,7 +63,7 @@ func (archive *siteArchive) Update(site *htracker.Site) (diff string, err error)
 
 	// content unchanged
 	archivedSite.LastChecked = site.LastChecked
-	if err := archive.storage.Update(archivedSite); err != nil {
+	if err := archive.storage.Update(ctx, archivedSite); err != nil {
 		return "", fmt.Errorf("ArchiveStorage.Update() - %w", err)
 	}
 
@@ -70,8 +71,8 @@ func (archive *siteArchive) Update(site *htracker.Site) (diff string, err error)
 }
 
 // Get is returning metadata, checksum and content of a site in the DB identified by URL, filter and contentType.
-func (archive *siteArchive) Get(subscription *htracker.Subscription) (*htracker.Site, error) {
-	content, err := archive.storage.Get(subscription)
+func (archive *siteArchive) Get(ctx context.Context, subscription *htracker.Subscription) (*htracker.Site, error) {
+	content, err := archive.storage.Get(ctx, subscription)
 	if err != nil {
 		return &htracker.Site{}, fmt.Errorf("ArchiveStorage.Get(): %w", err)
 	}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -23,6 +24,8 @@ func Test_ArchiveService_Update(t *testing.T) {
 
 	date1 := time.Now()
 	date2 := date1.Add(time.Second)
+
+	ctx := context.Background()
 
 	testcases := []struct {
 		name               string
@@ -49,7 +52,7 @@ func Test_ArchiveService_Update(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		diff, err := svc.Update(&htracker.Site{tc.subscription, tc.date, tc.date, tc.content, tc.checksum, ""})
+		diff, err := svc.Update(ctx, &htracker.Site{tc.subscription, tc.date, tc.date, tc.content, tc.checksum, ""})
 		if err != nil {
 			t.Fatalf("%s: archivesvc.Update() failed: %v", tc.name, err)
 		}
@@ -58,7 +61,7 @@ func Test_ArchiveService_Update(t *testing.T) {
 			t.Fatalf("%s: Expected diff %s, got %s", tc.name, tc.diffExpected, diff)
 		}
 
-		site, err := svc.Get(tc.subscription)
+		site, err := svc.Get(ctx, tc.subscription)
 		if err != nil {
 			t.Fatalf("%s: archivesvc.Get() failed: %v", tc.name, err)
 		}
@@ -80,7 +83,7 @@ func Test_ArchiveService_Update(t *testing.T) {
 		}
 	}
 
-	_, err := svc.Get(&htracker.Subscription{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
+	_, err := svc.Get(ctx, &htracker.Subscription{URL: "http://does/not/exist", Filter: "some_filter", ContentType: "some_content_type"})
 	if !errors.Is(err, htracker.ErrNotExist) {
 		t.Fatalf("svc.Get(): Expected ErrNotExist error, got %v", err)
 	}

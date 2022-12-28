@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -33,7 +34,7 @@ func NewSubscriptionStorage(logger *slog.Logger) *memDB {
 var _ storage.SiteStorage = &memDB{}
 
 // Get is returning the site for the given subscription or ErrNotExist if not found.
-func (db *memDB) Get(subscription *htracker.Subscription) (*htracker.Site, error) {
+func (db *memDB) Get(ctx context.Context, subscription *htracker.Subscription) (*htracker.Site, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -47,7 +48,7 @@ func (db *memDB) Get(subscription *htracker.Subscription) (*htracker.Site, error
 }
 
 // Add is adding a new site to the archive.
-func (db *memDB) Add(site *htracker.Site) error {
+func (db *memDB) Add(ctx context.Context, site *htracker.Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -70,7 +71,7 @@ func (db *memDB) Add(site *htracker.Site) error {
 }
 
 // Update is updating a site in the site archive if found.
-func (db *memDB) Update(site *htracker.Site) error {
+func (db *memDB) Update(ctx context.Context, site *htracker.Site) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -95,7 +96,7 @@ func (db *memDB) Update(site *htracker.Site) error {
 var _ storage.SubscriptionStorage = &memDB{}
 
 // FindBySubscriber is returning all subscribed sites for a given subscriber.
-func (db *memDB) FindBySubscriber(email string) ([]*htracker.Subscription, error) {
+func (db *memDB) FindBySubscriber(ctx context.Context, email string) ([]*htracker.Subscription, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -109,7 +110,7 @@ func (db *memDB) FindBySubscriber(email string) ([]*htracker.Subscription, error
 }
 
 // FindBySubscription is returning all subscribers subscribed to the given site.
-func (db *memDB) FindBySubscription(subscription *htracker.Subscription) ([]*storage.Subscriber, error) {
+func (db *memDB) FindBySubscription(ctx context.Context, subscription *htracker.Subscription) ([]*storage.Subscriber, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -127,12 +128,12 @@ func (db *memDB) FindBySubscription(subscription *htracker.Subscription) ([]*sto
 }
 
 // SubscriberCount is returning the number of subscribers.
-func (db *memDB) SubscriberCount() (int, error) {
+func (db *memDB) SubscriberCount(ctx context.Context) (int, error) {
 	return len(db.subscribers), nil
 }
 
 // AddSubscriber adds a new subscriber.
-func (db *memDB) AddSubscriber(subscriber *storage.Subscriber) error {
+func (db *memDB) AddSubscriber(ctx context.Context, subscriber *storage.Subscriber) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -147,7 +148,7 @@ func (db *memDB) AddSubscriber(subscriber *storage.Subscriber) error {
 }
 
 // GetAllSubscribers is returning all subscribers.
-func (db *memDB) GetAllSubscribers() ([]*storage.Subscriber, error) {
+func (db *memDB) GetAllSubscribers(ctx context.Context) ([]*storage.Subscriber, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -155,7 +156,7 @@ func (db *memDB) GetAllSubscribers() ([]*storage.Subscriber, error) {
 }
 
 // GetSubscriber returns the subscriber with the given email, if found.
-func (db *memDB) GetSubscriber(email string) (*storage.Subscriber, error) {
+func (db *memDB) GetSubscriber(ctx context.Context, email string) (*storage.Subscriber, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -169,7 +170,7 @@ func (db *memDB) GetSubscriber(email string) (*storage.Subscriber, error) {
 }
 
 // AddSubscription is adding a new subscription if it doesn't exist yet.
-func (db *memDB) AddSubscription(email string, subscription *htracker.Subscription) error {
+func (db *memDB) AddSubscription(ctx context.Context, email string, subscription *htracker.Subscription) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -193,7 +194,7 @@ func (db *memDB) AddSubscription(email string, subscription *htracker.Subscripti
 }
 
 // RemoveSubscription is removing the subscription of a subscriber to a site.
-func (db *memDB) RemoveSubscription(email string, subscription *htracker.Subscription) error {
+func (db *memDB) RemoveSubscription(ctx context.Context, email string, subscription *htracker.Subscription) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -217,7 +218,7 @@ func (db *memDB) RemoveSubscription(email string, subscription *htracker.Subscri
 }
 
 // RemoveSubscriber is removing a subscriber with all it's subscriptions.
-func (db *memDB) RemoveSubscriber(email string) error {
+func (db *memDB) RemoveSubscriber(ctx context.Context, email string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
