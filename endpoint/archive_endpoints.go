@@ -2,13 +2,14 @@ package endpoint
 
 import (
 	"context"
+	"fmt"
 
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/service"
 )
 
 type UpdateReq struct {
-	site *htracker.Site
+	Site *htracker.Site
 }
 
 func (req UpdateReq) Name() string {
@@ -16,7 +17,7 @@ func (req UpdateReq) Name() string {
 }
 
 type UpdateResp struct {
-	diff string
+	Diff string
 	err  error
 }
 
@@ -26,13 +27,16 @@ func (resp UpdateResp) Failed() error {
 
 func MakeUpdateEndpoint(svc service.SiteArchive) Endpoint[UpdateReq, UpdateResp] {
 	return func(ctx context.Context, req UpdateReq) (UpdateResp, error) {
-		diff, err := svc.Update(ctx, req.site)
-		return UpdateResp{diff: diff, err: err}, nil
+		if req.Site == nil {
+			return UpdateResp{}, fmt.Errorf("could not find site in request")
+		}
+		diff, err := svc.Update(ctx, req.Site)
+		return UpdateResp{Diff: diff, err: err}, nil
 	}
 }
 
 type GetReq struct {
-	subscription *htracker.Subscription
+	Subscription *htracker.Subscription
 }
 
 func (req GetReq) Name() string {
@@ -40,7 +44,7 @@ func (req GetReq) Name() string {
 }
 
 type GetResp struct {
-	site *htracker.Site
+	Site *htracker.Site
 	err  error
 }
 
@@ -50,7 +54,10 @@ func (resp GetResp) Failed() error {
 
 func MakeGetEndpoint(svc service.SiteArchive) Endpoint[GetReq, GetResp] {
 	return func(ctx context.Context, req GetReq) (GetResp, error) {
-		site, err := svc.Get(ctx, req.subscription)
-		return GetResp{site: site, err: err}, nil
+		if req.Subscription == nil {
+			return GetResp{}, fmt.Errorf("could not find subscription in request")
+		}
+		site, err := svc.Get(ctx, req.Subscription)
+		return GetResp{Site: site, err: err}, nil
 	}
 }

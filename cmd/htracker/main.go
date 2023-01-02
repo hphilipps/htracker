@@ -2,12 +2,21 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 	"time"
 
+	"github.com/oklog/run"
 	"gitlab.com/henri.philipps/htracker"
+	"gitlab.com/henri.philipps/htracker/endpoint"
 	"gitlab.com/henri.philipps/htracker/exporter"
 	"gitlab.com/henri.philipps/htracker/scraper"
 	"gitlab.com/henri.philipps/htracker/service"
@@ -16,20 +25,169 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var urlFlag = flag.String("url", "", "url to be scraped")
-var filterFlag = flag.String("f", "", "filter to be applied to scraped content")
-var contentTypeFlag = flag.String("t", "text", "content type of the scraped url")
-var chromeWSFlag = flag.String("ws", "ws://localhost:3000", "websocket url to connect to chrome instance for site rendering")
-var renderWithChromeFlag = flag.Bool("r", false, "render site content using chrome if true (needed for java script)")
+var servefs = flag.NewFlagSet("serve", flag.ExitOnError)
+var scrapefs = flag.NewFlagSet("scrape", flag.ExitOnError)
+var watchfs = flag.NewFlagSet("watch", flag.ExitOnError)
+
+var addrFlag = servefs.String("addr", ":8080", "address the server is listening on")
+
+var urlFlag = scrapefs.String("url", "", "url to be scraped")
+var filterFlag = scrapefs.String("f", "", "filter to be applied to scraped content")
+var contentTypeFlag = scrapefs.String("t", "text", "content type of the scraped url")
+var chromeWSFlag = scrapefs.String("ws", "ws://localhost:3000", "websocket url to connect to chrome instance for site rendering")
+var renderWithChromeFlag = scrapefs.Bool("r", false, "render site content using chrome if true (needed for java script)")
 
 func main() {
-
-	flag.Parse()
-
 	ctx := context.Background()
 	logger := slog.Default()
 	storage := memory.NewSiteStorage(logger)
 	archive := service.NewSiteArchive(storage)
+	subscriptionSvc := service.NewSubscriptionSvc(storage)
+
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "scrape":
+		if err := scrapefs.Parse(os.Args[2:]); err != nil {
+			fmt.Println(err.Error())
+			os.Exit(0)
+		}
+		scrape(ctx, *urlFlag, *filterFlag, *contentTypeFlag, archive, *logger)
+	case "serve":
+		if err := servefs.Parse(os.Args[2:]); err != nil {
+			fmt.Println(err.Error())
+			os.Exit(0)
+		}
+		serve(ctx, *addrFlag, archive, subscriptionSvc, *logger)
+	case "watch":
+		if err := watchfs.Parse(os.Args[2:]); err != nil {
+			fmt.Println(err.Error())
+			os.Exit(0)
+		}
+		watch(ctx, subscriptionSvc, archive, *logger)
+	default:
+		usage()
+	}
+}
+
+func usage() {
+	fmt.Printf("Usage: %s serve|scrape|watch [options]\n", filepath.Base(os.Args[0]))
+}
+
+func serve(ctx context.Context, listenAddr string, archive service.SiteArchive, subscriptionSvc service.SubscriptionSvc, logger slog.Logger) {
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	watcher := watcher.NewWatcher(archive, subscriptionSvc, watcher.WithInterval(60*time.Second), watcher.WithLogger(&logger))
+	go watcher.Start(ctx)
+
+	updateEP := endpoint.MakeUpdateEndpoint(archive)
+	updateEP = endpoint.LoggingMiddleware[endpoint.UpdateReq, endpoint.UpdateResp](&logger)(updateEP)
+	updateHandler := createJSONHandler(updateEP)
+
+	getEP := endpoint.MakeGetEndpoint(archive)
+	getEP = endpoint.LoggingMiddleware[endpoint.GetReq, endpoint.GetResp](&logger)(getEP)
+	getHandler := createJSONHandler(getEP)
+
+	addSubscriberEP := endpoint.MakeAddSubscriberEndpoint(subscriptionSvc)
+	addSubscriberEP = endpoint.LoggingMiddleware[endpoint.AddSubscriberReq, endpoint.AddSubscriberResp](&logger)(addSubscriberEP)
+	addSubscriberHandler := createJSONHandler(addSubscriberEP)
+
+	subscribeEP := endpoint.MakeSubscribeEndpoint(subscriptionSvc)
+	subscribeEP = endpoint.LoggingMiddleware[endpoint.SubscribeReq, endpoint.SubscribeResp](&logger)(subscribeEP)
+	subscribeHandler := createJSONHandler(subscribeEP)
+
+	mux := http.NewServeMux()
+	mux.Handle("/update", updateHandler)
+	mux.Handle("/get", getHandler)
+	mux.Handle("/add_subscriber", addSubscriberHandler)
+	mux.Handle("/subscribe", subscribeHandler)
+
+	g := run.Group{}
+
+	// add handler for signals, to shutdown all go routines on SIGINT and SIGTERM
+	g.Add(func() error {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case sig := <-c:
+			return fmt.Errorf("catched signal %v", sig)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}, func(error) {
+		cancel()
+	})
+
+	server := http.Server{Handler: mux}
+
+	logger.Info("start listening...", slog.String("listen_addr", listenAddr))
+	ln, err := net.Listen("tcp", *addrFlag)
+	if err != nil {
+		logger.Error("failed to start server, exiting", err)
+	}
+
+	timeout, _ := context.WithTimeout(ctx, 30*time.Second)
+	g.Add(func() error { return server.Serve(ln) }, func(error) { server.Shutdown(timeout) })
+	logger.Info("exiting", slog.String("reason", g.Run().Error()))
+}
+
+func createJSONHandler[Req endpoint.Requester, Resp endpoint.Responder](ep endpoint.Endpoint[Req, Resp]) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		request, err := decodeHTTPJSONRequest[Req](ctx, req)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			errResponse := struct{ Error string }{Error: fmt.Sprintf("request decoder: %s", err.Error())}
+			if err := json.NewEncoder(w).Encode(errResponse); err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		response, err := ep(ctx, request)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			errResponse := struct{ Error string }{Error: err.Error()}
+			if err := json.NewEncoder(w).Encode(errResponse); err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		if err := encodeHTTPJSONResponse(ctx, w, response); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func decodeHTTPJSONRequest[Req endpoint.Requester](_ context.Context, r *http.Request) (Req, error) {
+	var req Req
+	err := json.NewDecoder(r.Body).Decode(&req)
+	return req, err
+}
+
+func encodeHTTPJSONResponse[Resp endpoint.Responder](ctx context.Context, w http.ResponseWriter, response Resp) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := response.Failed(); err != nil {
+		switch {
+		case errors.Is(err, htracker.ErrNotExist):
+			w.WriteHeader(http.StatusNotFound)
+		case errors.Is(err, htracker.ErrAlreadyExists):
+			w.WriteHeader(http.StatusConflict)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		errResponse := struct{ Error string }{Error: err.Error()}
+		return json.NewEncoder(w).Encode(errResponse)
+	}
+	return json.NewEncoder(w).Encode(response)
+}
+
+func scrape(ctx context.Context, url, filter, contentType string, archive service.SiteArchive, logger slog.Logger) {
 	exp := exporter.NewExporter(context.Background(), archive)
 	subscription := &htracker.Subscription{
 		URL:         *urlFlag,
@@ -86,9 +244,9 @@ func main() {
 			break
 		}
 	}
+}
 
-	subscriptionSvc := service.NewSubscriptionSvc(storage)
-
+func watch(ctx context.Context, subscriptionSvc service.SubscriptionSvc, archive service.SiteArchive, logger slog.Logger) {
 	subscriptionSvc.AddSubscriber(ctx, &service.Subscriber{Email: "email1"})
 	subscriptionSvc.AddSubscriber(ctx, &service.Subscriber{Email: "email2"})
 	subscriptionSvc.Subscribe(ctx, "email1", &htracker.Subscription{URL: "http://httpbin.org/anything/1"})

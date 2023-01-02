@@ -15,7 +15,7 @@ func LoggingMiddleware[Req Requester, Resp Responder](logger *slog.Logger) Middl
 	return func(next Endpoint[Req, Resp]) Endpoint[Req, Resp] {
 		return func(ctx context.Context, request Req) (response Resp, err error) {
 			defer func(begin time.Time) {
-				logger.Debug("called endpoint", slog.String("method", request.Name()),
+				logger.Info("called endpoint", slog.String("method", request.Name()),
 					slog.Bool("success", response.Failed() == nil), slog.Duration("duration", time.Since(begin)))
 			}(time.Now())
 

@@ -2,13 +2,14 @@ package endpoint
 
 import (
 	"context"
+	"fmt"
 
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/service"
 )
 
 type AddSubscriberReq struct {
-	subscriber *service.Subscriber
+	Subscriber *service.Subscriber
 }
 
 func (req AddSubscriberReq) Name() string {
@@ -25,14 +26,17 @@ func (resp AddSubscriberResp) Failed() error {
 
 func MakeAddSubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[AddSubscriberReq, AddSubscriberResp] {
 	return func(ctx context.Context, req AddSubscriberReq) (AddSubscriberResp, error) {
-		err := svc.AddSubscriber(ctx, req.subscriber)
+		if req.Subscriber == nil {
+			return AddSubscriberResp{}, fmt.Errorf("could not find valid subscriber in request")
+		}
+		err := svc.AddSubscriber(ctx, req.Subscriber)
 		return AddSubscriberResp{err: err}, nil
 	}
 }
 
 type SubscribeReq struct {
-	email        string
-	subscription *htracker.Subscription
+	Email        string
+	Subscription *htracker.Subscription
 }
 
 func (req SubscribeReq) Name() string {
@@ -49,13 +53,16 @@ func (resp SubscribeResp) Failed() error {
 
 func MakeSubscribeEndpoint(svc service.SubscriptionSvc) Endpoint[SubscribeReq, SubscribeResp] {
 	return func(ctx context.Context, req SubscribeReq) (SubscribeResp, error) {
-		err := svc.Subscribe(ctx, req.email, req.subscription)
+		if req.Subscription == nil {
+			return SubscribeResp{}, fmt.Errorf("could not find valid subscription in request")
+		}
+		err := svc.Subscribe(ctx, req.Email, req.Subscription)
 		return SubscribeResp{err: err}, nil
 	}
 }
 
 type GetSubscriptionsBySubscriberReq struct {
-	email string
+	Email string
 }
 
 func (req GetSubscriptionsBySubscriberReq) Name() string {
@@ -63,7 +70,7 @@ func (req GetSubscriptionsBySubscriberReq) Name() string {
 }
 
 type GetSubscriptionsBySubscriberResp struct {
-	subscriptions []*htracker.Subscription
+	Subscriptions []*htracker.Subscription
 	err           error
 }
 
@@ -73,13 +80,13 @@ func (resp GetSubscriptionsBySubscriberResp) Failed() error {
 
 func MakeGetSubscriptionsBySubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscriptionsBySubscriberReq, GetSubscriptionsBySubscriberResp] {
 	return func(ctx context.Context, req GetSubscriptionsBySubscriberReq) (GetSubscriptionsBySubscriberResp, error) {
-		subscriptions, err := svc.GetSubscriptionsBySubscriber(ctx, req.email)
-		return GetSubscriptionsBySubscriberResp{subscriptions: subscriptions, err: err}, nil
+		subscriptions, err := svc.GetSubscriptionsBySubscriber(ctx, req.Email)
+		return GetSubscriptionsBySubscriberResp{Subscriptions: subscriptions, err: err}, nil
 	}
 }
 
 type GetSubscribersBySubscriptionReq struct {
-	subscription *htracker.Subscription
+	Subscription *htracker.Subscription
 }
 
 func (req GetSubscribersBySubscriptionReq) Name() string {
@@ -87,7 +94,7 @@ func (req GetSubscribersBySubscriptionReq) Name() string {
 }
 
 type GetSubscribersBySubscriptionResp struct {
-	subscribers []*service.Subscriber
+	Subscribers []*service.Subscriber
 	err         error
 }
 
@@ -97,8 +104,11 @@ func (resp GetSubscribersBySubscriptionResp) Failed() error {
 
 func MakeGetSubscribersBySubscriptionEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscribersBySubscriptionReq, GetSubscribersBySubscriptionResp] {
 	return func(ctx context.Context, req GetSubscribersBySubscriptionReq) (GetSubscribersBySubscriptionResp, error) {
-		subscribers, err := svc.GetSubscribersBySubscription(ctx, req.subscription)
-		return GetSubscribersBySubscriptionResp{subscribers: subscribers, err: err}, nil
+		if req.Subscription == nil {
+			return GetSubscribersBySubscriptionResp{}, fmt.Errorf("could not find valid subscription in request")
+		}
+		subscribers, err := svc.GetSubscribersBySubscription(ctx, req.Subscription)
+		return GetSubscribersBySubscriptionResp{Subscribers: subscribers, err: err}, nil
 	}
 }
 
@@ -109,7 +119,7 @@ func (req GetSubscribersReq) Name() string {
 }
 
 type GetSubscribersResp struct {
-	subscribers []*service.Subscriber
+	Subscribers []*service.Subscriber
 	err         error
 }
 
@@ -120,13 +130,13 @@ func (resp GetSubscribersResp) Failed() error {
 func MakeGetSubscribersEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscribersReq, GetSubscribersResp] {
 	return func(ctx context.Context, req GetSubscribersReq) (GetSubscribersResp, error) {
 		subscribers, err := svc.GetSubscribers(ctx)
-		return GetSubscribersResp{subscribers: subscribers, err: err}, nil
+		return GetSubscribersResp{Subscribers: subscribers, err: err}, nil
 	}
 }
 
 type UnsubscribeReq struct {
-	email        string
-	subscription *htracker.Subscription
+	Email        string
+	Subscription *htracker.Subscription
 }
 
 func (req UnsubscribeReq) Name() string {
@@ -143,13 +153,16 @@ func (resp UnsubscribeResp) Failed() error {
 
 func MakeUnsubscribeEndpoint(svc service.SubscriptionSvc) Endpoint[UnsubscribeReq, UnsubscribeResp] {
 	return func(ctx context.Context, req UnsubscribeReq) (UnsubscribeResp, error) {
-		err := svc.Unsubscribe(ctx, req.email, req.subscription)
+		if req.Subscription == nil {
+			return UnsubscribeResp{}, fmt.Errorf("could not find valid subscription in request")
+		}
+		err := svc.Unsubscribe(ctx, req.Email, req.Subscription)
 		return UnsubscribeResp{err: err}, nil
 	}
 }
 
 type DeleteSubscriberReq struct {
-	email string
+	Email string
 }
 
 func (req DeleteSubscriberReq) Name() string {
@@ -166,7 +179,7 @@ func (resp DeleteSubscriberResp) Failed() error {
 
 func MakeDeleteSubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[DeleteSubscriberReq, DeleteSubscriberResp] {
 	return func(ctx context.Context, req DeleteSubscriberReq) (DeleteSubscriberResp, error) {
-		err := svc.DeleteSubscriber(ctx, req.email)
+		err := svc.DeleteSubscriber(ctx, req.Email)
 		return DeleteSubscriberResp{err: err}, nil
 	}
 }

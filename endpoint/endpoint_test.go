@@ -22,17 +22,17 @@ func TestMiddleware(t *testing.T) {
 	content2 := []byte("This is Site2")
 
 	req1 := UpdateReq{
-		site: &htracker.Site{sub1, time.Now(), time.Now(), content1, service.Checksum(content1), ""},
+		Site: &htracker.Site{sub1, time.Now(), time.Now(), content1, service.Checksum(content1), ""},
 	}
 	req2 := UpdateReq{
-		site: &htracker.Site{sub2, time.Now(), time.Now(), content2, service.Checksum(content2), ""},
+		Site: &htracker.Site{sub2, time.Now(), time.Now(), content2, service.Checksum(content2), ""},
 	}
 	req3 := UpdateReq{
-		site: &htracker.Site{sub1, time.Now(), time.Now(), content2, service.Checksum(content2), ""},
+		Site: &htracker.Site{sub1, time.Now(), time.Now(), content2, service.Checksum(content2), ""},
 	}
-	req4 := GetReq{subscription: sub1}
-	req5 := GetReq{subscription: sub2}
-	req6 := GetReq{subscription: sub3}
+	req4 := GetReq{Subscription: sub1}
+	req5 := GetReq{Subscription: sub2}
+	req6 := GetReq{Subscription: sub3}
 
 	ctx := context.Background()
 	logger := slog.New(slog.HandlerOptions{Level: slog.LevelDebug}.NewTextHandler(os.Stdout))
@@ -77,7 +77,7 @@ func TestMiddleware(t *testing.T) {
 	if err := getResp.Failed(); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Resp: %v", getResp.site.Checksum)
+	t.Logf("Resp: %v", getResp.Site.Checksum)
 
 	getResp, err = getEp(ctx, req5)
 	if err != nil {
@@ -86,7 +86,7 @@ func TestMiddleware(t *testing.T) {
 	if err := getResp.Failed(); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Resp: %v", getResp.site.Checksum)
+	t.Logf("Resp: %v", getResp.Site.Checksum)
 
 	getResp, err = getEp(ctx, req6)
 	if err != nil {
@@ -95,5 +95,5 @@ func TestMiddleware(t *testing.T) {
 	if err := getResp.Failed(); err == nil {
 		t.Error("Expected get to fail, but got nil error")
 	}
-	t.Logf("Resp: %v", getResp.site.Checksum)
+	t.Logf("Resp: %v", getResp.Site.Checksum)
 }
