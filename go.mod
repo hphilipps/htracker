@@ -5,6 +5,8 @@ go 1.19
 require (
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/geziyor/geziyor v0.0.0-20220429000531-738852f9321d
+	github.com/go-chi/chi v1.5.4
+	github.com/oklog/run v1.1.0
 	github.com/sergi/go-diff v1.2.0
 	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15
 	golang.org/x/net v0.4.0
@@ -26,7 +28,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/oklog/run v1.1.0 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.39.0 // indirect

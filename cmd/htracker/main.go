@@ -18,6 +18,7 @@ import (
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/endpoint"
 	"gitlab.com/henri.philipps/htracker/exporter"
+	httptransport "gitlab.com/henri.philipps/htracker/http"
 	"gitlab.com/henri.philipps/htracker/scraper"
 	"gitlab.com/henri.philipps/htracker/service"
 	"gitlab.com/henri.philipps/htracker/storage/memory"
@@ -84,27 +85,7 @@ func serve(ctx context.Context, listenAddr string, archive service.SiteArchive, 
 	watcher := watcher.NewWatcher(archive, subscriptionSvc, watcher.WithInterval(60*time.Second), watcher.WithLogger(&logger))
 	go watcher.Start(ctx)
 
-	updateEP := endpoint.MakeUpdateEndpoint(archive)
-	updateEP = endpoint.LoggingMiddleware[endpoint.UpdateReq, endpoint.UpdateResp](&logger)(updateEP)
-	updateHandler := createJSONHandler(updateEP)
-
-	getEP := endpoint.MakeGetEndpoint(archive)
-	getEP = endpoint.LoggingMiddleware[endpoint.GetReq, endpoint.GetResp](&logger)(getEP)
-	getHandler := createJSONHandler(getEP)
-
-	addSubscriberEP := endpoint.MakeAddSubscriberEndpoint(subscriptionSvc)
-	addSubscriberEP = endpoint.LoggingMiddleware[endpoint.AddSubscriberReq, endpoint.AddSubscriberResp](&logger)(addSubscriberEP)
-	addSubscriberHandler := createJSONHandler(addSubscriberEP)
-
-	subscribeEP := endpoint.MakeSubscribeEndpoint(subscriptionSvc)
-	subscribeEP = endpoint.LoggingMiddleware[endpoint.SubscribeReq, endpoint.SubscribeResp](&logger)(subscribeEP)
-	subscribeHandler := createJSONHandler(subscribeEP)
-
-	mux := http.NewServeMux()
-	mux.Handle("/update", updateHandler)
-	mux.Handle("/get", getHandler)
-	mux.Handle("/add_subscriber", addSubscriberHandler)
-	mux.Handle("/subscribe", subscribeHandler)
+	router := httptransport.MakeAPIHandler(archive, subscriptionSvc, &logger)
 
 	g := run.Group{}
 
@@ -122,7 +103,9 @@ func serve(ctx context.Context, listenAddr string, archive service.SiteArchive, 
 		cancel()
 	})
 
-	server := http.Server{Handler: mux}
+	// instead of ListenAndServe(), which can't be interrupted, we create our own
+	// Server and add it's Serve() method to the run group later.
+	server := http.Server{Handler: router}
 
 	logger.Info("start listening...", slog.String("listen_addr", listenAddr))
 	ln, err := net.Listen("tcp", *addrFlag)

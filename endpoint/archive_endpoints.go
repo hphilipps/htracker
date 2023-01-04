@@ -6,7 +6,27 @@ import (
 
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/service"
+	"golang.org/x/exp/slog"
 )
+
+type ArchiveEndpoints struct {
+	Update Endpoint[UpdateReq, UpdateResp]
+	Get    Endpoint[GetReq, GetResp]
+}
+
+func MakeArchiveEndpoints(svc service.SiteArchive, logger *slog.Logger) ArchiveEndpoints {
+
+	updateEP := MakeUpdateEndpoint(svc)
+	updateEP = LoggingMiddleware[UpdateReq, UpdateResp](logger)(updateEP)
+
+	getEP := MakeGetEndpoint(svc)
+	getEP = LoggingMiddleware[GetReq, GetResp](logger)(getEP)
+
+	return ArchiveEndpoints{
+		Update: updateEP,
+		Get:    getEP,
+	}
+}
 
 type UpdateReq struct {
 	Site *htracker.Site

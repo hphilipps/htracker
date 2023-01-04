@@ -6,7 +6,51 @@ import (
 
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/service"
+	"golang.org/x/exp/slog"
 )
+
+type SubscriptionEndpoints struct {
+	AddSubscriber                Endpoint[AddSubscriberReq, AddSubscriberResp]
+	Subscribe                    Endpoint[SubscribeReq, SubscribeResp]
+	GetSubscriptionsBySubscriber Endpoint[GetSubscriptionsBySubscriberReq, GetSubscriptionsBySubscriberResp]
+	GetSubscribersBySubscription Endpoint[GetSubscribersBySubscriptionReq, GetSubscribersBySubscriptionResp]
+	GetSubscribers               Endpoint[GetSubscribersReq, GetSubscribersResp]
+	Unsubscribe                  Endpoint[UnsubscribeReq, UnsubscribeResp]
+	DeleteSubscriber             Endpoint[DeleteSubscriberReq, DeleteSubscriberResp]
+}
+
+func MakeSubscriptionEndpoints(svc service.SubscriptionSvc, logger *slog.Logger) SubscriptionEndpoints {
+	addSubscriberEP := MakeAddSubscriberEndpoint(svc)
+	addSubscriberEP = LoggingMiddleware[AddSubscriberReq, AddSubscriberResp](logger)(addSubscriberEP)
+
+	subscribeEP := MakeSubscribeEndpoint(svc)
+	subscribeEP = LoggingMiddleware[SubscribeReq, SubscribeResp](logger)(subscribeEP)
+
+	getSubscriptionsBySubscriberEP := MakeGetSubscriptionsBySubscriberEndpoint(svc)
+	getSubscriptionsBySubscriberEP = LoggingMiddleware[GetSubscriptionsBySubscriberReq, GetSubscriptionsBySubscriberResp](logger)(getSubscriptionsBySubscriberEP)
+
+	getSubscribersBySubscriptionEP := MakeGetSubscribersBySubscriptionEndpoint(svc)
+	getSubscribersBySubscriptionEP = LoggingMiddleware[GetSubscribersBySubscriptionReq, GetSubscribersBySubscriptionResp](logger)(getSubscribersBySubscriptionEP)
+
+	getSubscibersEP := MakeGetSubscribersEndpoint(svc)
+	getSubscibersEP = LoggingMiddleware[GetSubscribersReq, GetSubscribersResp](logger)(getSubscibersEP)
+
+	unsubscribeEP := MakeUnsubscribeEndpoint(svc)
+	unsubscribeEP = LoggingMiddleware[UnsubscribeReq, UnsubscribeResp](logger)(unsubscribeEP)
+
+	deleteEP := MakeDeleteSubscriberEndpoint(svc)
+	deleteEP = LoggingMiddleware[DeleteSubscriberReq, DeleteSubscriberResp](logger)(deleteEP)
+
+	return SubscriptionEndpoints{
+		AddSubscriber:                addSubscriberEP,
+		Subscribe:                    subscribeEP,
+		GetSubscriptionsBySubscriber: getSubscriptionsBySubscriberEP,
+		GetSubscribersBySubscription: getSubscribersBySubscriptionEP,
+		GetSubscribers:               getSubscibersEP,
+		Unsubscribe:                  unsubscribeEP,
+		DeleteSubscriber:             deleteEP,
+	}
+}
 
 type AddSubscriberReq struct {
 	Subscriber *service.Subscriber
