@@ -52,7 +52,7 @@ func (e *archiveExporter) Export(exports chan interface{}) error {
 			return fmt.Errorf("exporter.Export(): expected response of type *Site, got %T", res)
 		}
 
-		_, err := e.archivesvc.Update(context.Background(), site)
+		_, err := e.archivesvc.Update(e.ctx, site)
 		if err != nil {
 			e.logger.Error("exporter.Export(): failed to update site in db", err)
 		}
