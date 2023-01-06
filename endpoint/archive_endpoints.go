@@ -3,6 +3,7 @@ package endpoint
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/service"
@@ -45,6 +46,10 @@ func (resp UpdateResp) Failed() error {
 	return resp.err
 }
 
+func (resp UpdateResp) StatusCode() int {
+	return http.StatusNoContent
+}
+
 func MakeUpdateEndpoint(svc service.SiteArchive) Endpoint[UpdateReq, UpdateResp] {
 	return func(ctx context.Context, req UpdateReq) (UpdateResp, error) {
 		if req.Site == nil {
@@ -70,6 +75,10 @@ type GetResp struct {
 
 func (resp GetResp) Failed() error {
 	return resp.err
+}
+
+func (resp GetResp) StatusCode() int {
+	return http.StatusOK
 }
 
 func MakeGetEndpoint(svc service.SiteArchive) Endpoint[GetReq, GetResp] {

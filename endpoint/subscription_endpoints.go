@@ -3,6 +3,7 @@ package endpoint
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"gitlab.com/henri.philipps/htracker"
 	"gitlab.com/henri.philipps/htracker/service"
@@ -68,6 +69,10 @@ func (resp AddSubscriberResp) Failed() error {
 	return resp.err
 }
 
+func (resp AddSubscriberResp) StatusCode() int {
+	return http.StatusNoContent
+}
+
 func MakeAddSubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[AddSubscriberReq, AddSubscriberResp] {
 	return func(ctx context.Context, req AddSubscriberReq) (AddSubscriberResp, error) {
 		if req.Subscriber == nil {
@@ -93,6 +98,10 @@ type SubscribeResp struct {
 
 func (resp SubscribeResp) Failed() error {
 	return resp.err
+}
+
+func (resp SubscribeResp) StatusCode() int {
+	return http.StatusNoContent
 }
 
 func MakeSubscribeEndpoint(svc service.SubscriptionSvc) Endpoint[SubscribeReq, SubscribeResp] {
@@ -122,6 +131,10 @@ func (resp GetSubscriptionsBySubscriberResp) Failed() error {
 	return resp.err
 }
 
+func (resp GetSubscriptionsBySubscriberResp) StatusCode() int {
+	return http.StatusOK
+}
+
 func MakeGetSubscriptionsBySubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscriptionsBySubscriberReq, GetSubscriptionsBySubscriberResp] {
 	return func(ctx context.Context, req GetSubscriptionsBySubscriberReq) (GetSubscriptionsBySubscriberResp, error) {
 		subscriptions, err := svc.GetSubscriptionsBySubscriber(ctx, req.Email)
@@ -144,6 +157,10 @@ type GetSubscribersBySubscriptionResp struct {
 
 func (resp GetSubscribersBySubscriptionResp) Failed() error {
 	return resp.err
+}
+
+func (resp GetSubscribersBySubscriptionResp) StatusCode() int {
+	return http.StatusOK
 }
 
 func MakeGetSubscribersBySubscriptionEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscribersBySubscriptionReq, GetSubscribersBySubscriptionResp] {
@@ -171,6 +188,10 @@ func (resp GetSubscribersResp) Failed() error {
 	return resp.err
 }
 
+func (resp GetSubscribersResp) StatusCode() int {
+	return http.StatusOK
+}
+
 func MakeGetSubscribersEndpoint(svc service.SubscriptionSvc) Endpoint[GetSubscribersReq, GetSubscribersResp] {
 	return func(ctx context.Context, req GetSubscribersReq) (GetSubscribersResp, error) {
 		subscribers, err := svc.GetSubscribers(ctx)
@@ -193,6 +214,10 @@ type UnsubscribeResp struct {
 
 func (resp UnsubscribeResp) Failed() error {
 	return resp.err
+}
+
+func (resp UnsubscribeResp) StatusCode() int {
+	return http.StatusNoContent
 }
 
 func MakeUnsubscribeEndpoint(svc service.SubscriptionSvc) Endpoint[UnsubscribeReq, UnsubscribeResp] {
@@ -219,6 +244,10 @@ type DeleteSubscriberResp struct {
 
 func (resp DeleteSubscriberResp) Failed() error {
 	return resp.err
+}
+
+func (resp DeleteSubscriberResp) StatusCode() int {
+	return http.StatusNoContent
 }
 
 func MakeDeleteSubscriberEndpoint(svc service.SubscriptionSvc) Endpoint[DeleteSubscriberReq, DeleteSubscriberResp] {

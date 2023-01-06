@@ -13,7 +13,8 @@ type Requester interface {
 	Name() string
 }
 
-// Responder is an interface helpful to enrich endpoint middlewares with information.
+// Responder is an interface helpful for encoders and to enrich endpoint middlewares with information.
 type Responder interface {
 	Failed() error
+	StatusCode() int
 }
