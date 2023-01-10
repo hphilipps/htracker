@@ -6,6 +6,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/geziyor/geziyor v0.0.0-20220429000531-738852f9321d
 	github.com/go-chi/chi v1.5.4
+	github.com/jmoiron/sqlx v1.3.5
+	github.com/lib/pq v1.10.7
 	github.com/oklog/run v1.1.0
 	github.com/sergi/go-diff v1.2.0
 	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15

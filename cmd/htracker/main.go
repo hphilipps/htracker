@@ -38,6 +38,10 @@ var contentTypeFlag = scrapefs.String("t", "text", "content type of the scraped 
 var chromeWSFlag = scrapefs.String("ws", "ws://localhost:3000", "websocket url to connect to chrome instance for site rendering")
 var renderWithChromeFlag = scrapefs.Bool("r", false, "render site content using chrome if true (needed for java script)")
 
+func usage() {
+	fmt.Printf("Usage: %s serve|scrape|watch [options]\n", filepath.Base(os.Args[0]))
+}
+
 func main() {
 	ctx := context.Background()
 	logger := slog.Default()
@@ -72,10 +76,6 @@ func main() {
 	default:
 		usage()
 	}
-}
-
-func usage() {
-	fmt.Printf("Usage: %s serve|scrape|watch [options]\n", filepath.Base(os.Args[0]))
 }
 
 func serve(ctx context.Context, listenAddr string, archive service.SiteArchive, subscriptionSvc service.SubscriptionSvc, logger slog.Logger) {
