@@ -35,7 +35,7 @@ func (db *db) FindBySubscriber(ctx context.Context, email string) ([]*htracker.S
 
 	if err := db.conn.SelectContext(ctx, &subs, query, email); err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "FindBySubscriber"), slog.String("email", email))
-		return []*htracker.Subscription{}, err
+		return []*htracker.Subscription{}, wrapError(err)
 	}
 
 	subscriptions := make([]*htracker.Subscription, len(subs))
@@ -63,7 +63,7 @@ func (db *db) FindBySubscription(ctx context.Context, subscription *htracker.Sub
 	if err := db.conn.SelectContext(ctx, &subs, query, subscription.URL, subscription.Filter, subscription.ContentType); err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "FindBySubscription"),
 			slog.String("url", subscription.URL), slog.String("filter", subscription.Filter), slog.String("content_type", subscription.ContentType))
-		return []*storage.Subscriber{}, err
+		return []*storage.Subscriber{}, wrapError(err)
 	}
 
 	subscribers := make([]*storage.Subscriber, len(subs))
@@ -89,7 +89,7 @@ func (db *db) SubscriberCount(ctx context.Context) (int, error) {
 
 	if err := db.conn.GetContext(ctx, &count, `SELECT count(email) FROM subscribers`); err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "SubscriberCount"))
-		return count, err
+		return count, wrapError(err)
 	}
 
 	return count, nil
@@ -99,7 +99,7 @@ func (db *db) AddSubscriber(ctx context.Context, subscriber *storage.Subscriber)
 	if _, err := db.conn.ExecContext(ctx, `INSERT INTO subscribers(email, subscription_limit) VALUES ($1, $2)`,
 		subscriber.Email, subscriber.SubscriptionLimit); err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "AddSubscriber"), slog.String("email", subscriber.Email))
-		return err
+		return wrapError(err)
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func (db *db) GetAllSubscribers(ctx context.Context) ([]*storage.Subscriber, err
 
 	if err := db.conn.SelectContext(ctx, &subs, `SELECT * FROM subscribers`); err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "GetAllSubscribers"))
-		return []*storage.Subscriber{}, err
+		return []*storage.Subscriber{}, wrapError(err)
 	}
 
 	subscribers := make([]*storage.Subscriber, len(subs))
@@ -136,7 +136,7 @@ func (db *db) GetSubscriber(ctx context.Context, email string) (*storage.Subscri
 	err := db.conn.GetContext(ctx, &sub, `SELECT * FROM subscribers WHERE email = $1`, email)
 	if err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "GetSubscriber"), slog.String("email", email))
-		return &storage.Subscriber{}, err
+		return &storage.Subscriber{}, wrapError(err)
 	}
 
 	// TODO: avoid this N+1 query if possible
@@ -188,7 +188,7 @@ func (db *db) AddSubscription(ctx context.Context, email string, subscription *h
 				if err := tx.Rollback(); err != nil {
 					logger.Error("rollback failed", err)
 				}
-				return err
+				return wrapError(err)
 			}
 
 			id, err = res.LastInsertId()
@@ -210,7 +210,7 @@ func (db *db) AddSubscription(ctx context.Context, email string, subscription *h
 		if err := tx.Rollback(); err != nil {
 			logger.Error("rollback failed", err)
 		}
-		return err
+		return wrapError(err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -240,7 +240,7 @@ func (db *db) RemoveSubscription(ctx context.Context, email string, subscription
 		if err := tx.Rollback(); err != nil {
 			logger.Error("rollback failed", err)
 		}
-		return err
+		return wrapError(err)
 	}
 
 	// cleanup non-referenced subscriptions
@@ -255,7 +255,7 @@ func (db *db) RemoveSubscription(ctx context.Context, email string, subscription
 		if err := tx.Rollback(); err != nil {
 			logger.Error("rollback failed", err)
 		}
-		return err
+		return wrapError(err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -271,7 +271,7 @@ func (db *db) RemoveSubscriber(ctx context.Context, email string) error {
 
 	if _, err := db.conn.ExecContext(ctx, query, email); err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "RemoveSubscriber"), slog.String("email", email))
-		return err
+		return wrapError(err)
 	}
 
 	return nil

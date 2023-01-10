@@ -1,10 +1,15 @@
 package postgres
 
 import (
-	"github.com/jmoiron/sqlx"
-	"golang.org/x/exp/slog"
+	"database/sql"
+	"errors"
+	"fmt"
 
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
+	"gitlab.com/henri.philipps/htracker"
+	"golang.org/x/exp/slog"
 )
 
 type db struct {
@@ -24,4 +29,18 @@ func New(uri string, logger *slog.Logger) (db, error) {
 	db.conn = conn
 	db.logger = logger.With(slog.String("driver", "postgresql"))
 	return db, nil
+}
+
+func wrapError(err error) error {
+	switch e := err.(type) {
+	case *pq.Error:
+		if e.Code == "23505" {
+			return fmt.Errorf("%w: %v", htracker.ErrAlreadyExists, err)
+		}
+	default:
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: %v", htracker.ErrNotExist, err)
+		}
+	}
+	return err
 }

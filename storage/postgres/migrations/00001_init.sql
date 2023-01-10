@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS sites
         url text NOT NULL,
         filter text NOT NULL,
         content_type text NOT NULL,
-        last_updated time with time zone,
-        last_checked time with time zone,
+        last_updated timestamp with time zone,
+        last_checked timestamp with time zone,
         content text NOT NULL,
         checksum text NOT NULL,
         diff text NOT NULL,
@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS sites
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS subscriber_subscriptions;
+DROP TABLE IF EXISTS subscriber_subscription;
 DROP TABLE IF EXISTS subscribers CASCADE;
 DROP TABLE IF EXISTS subscriptions CASCADE;
+DROP TABLE IF EXISTS sites;
 -- +goose StatementEnd

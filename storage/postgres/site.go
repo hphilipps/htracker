@@ -26,7 +26,7 @@ func (db *db) Get(ctx context.Context, subscription *htracker.Subscription) (*ht
 		subscription.URL, subscription.Filter, subscription.ContentType); err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "Get"), slog.String("url", subscription.URL),
 			slog.String("filter", subscription.Filter), slog.String("content_type", subscription.ContentType))
-		return &htracker.Site{}, err
+		return &htracker.Site{}, wrapError(err)
 	}
 
 	return &htracker.Site{
@@ -49,13 +49,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 	if err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "Add"), slog.String("url", s.Subscription.URL),
 			slog.String("filter", s.Subscription.Filter), slog.String("content_type", s.Subscription.ContentType))
-		return err
+		return wrapError(err)
 	}
 	return nil
 }
 
 func (db *db) Update(ctx context.Context, s *htracker.Site) error {
-	_, err := db.conn.ExecContext(ctx, `
+	res, err := db.conn.ExecContext(ctx, `
 UPDATE sites SET
 last_updated = $1, last_checked = $2, content = $3, diff = $4, checksum = $5
 WHERE url = $6 AND filter = $7 AND content_type = $8`,
@@ -63,7 +63,16 @@ WHERE url = $6 AND filter = $7 AND content_type = $8`,
 	if err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "Update"), slog.String("url", s.Subscription.URL),
 			slog.String("filter", s.Subscription.Filter), slog.String("content_type", s.Subscription.ContentType))
+		return wrapError(err)
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
 		return err
 	}
+	if count == 0 {
+		return htracker.ErrNotExist
+	}
+
 	return nil
 }
