@@ -96,8 +96,9 @@ func (db *db) SubscriberCount(ctx context.Context) (int, error) {
 }
 
 func (db *db) AddSubscriber(ctx context.Context, subscriber *storage.Subscriber) error {
-	if _, err := db.conn.ExecContext(ctx, `INSERT INTO subscribers(email, subscription_limit) VALUES ($1, $2)`,
-		subscriber.Email, subscriber.SubscriptionLimit); err != nil {
+	_, err := db.conn.ExecContext(ctx, `INSERT INTO subscribers(email, subscription_limit) VALUES ($1, $2)`,
+		subscriber.Email, subscriber.SubscriptionLimit)
+	if err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "AddSubscriber"), slog.String("email", subscriber.Email))
 		return wrapError(err)
 	}

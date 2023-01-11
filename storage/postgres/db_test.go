@@ -65,7 +65,13 @@ func Test_DurationValuer_Scan(t *testing.T) {
 		{name: "1 year 0:00:11", src: "1 year 0:00:11", duration: 24*365*time.Hour + 11*time.Second},
 		{name: "3:04.5:11.5", src: "3:04.5:11.5", duration: 3*time.Hour + 4*time.Minute + 41*time.Second + 500*time.Millisecond},
 		{name: "1 year 2 months", src: "1 year 2 months", duration: 24*365*time.Hour + 2*24*30*time.Hour},
-		{name: "2 years 2 months 2 days", src: "2 years 2 months 2 days", duration: 2*24*365*time.Hour + 2*24*30*time.Hour + 2*24*time.Hour},
+		{name: "2 years 2 mons 2 days", src: "2 years 2 mons 2 days", duration: 2*24*365*time.Hour + 2*24*30*time.Hour + 2*24*time.Hour},
+		{name: "bogus: 1 year 1", src: "1 year 1", wantErr: true},
+		{name: "bogus: year 2 mons", src: "year 2 mons", wantErr: true},
+		{name: "bogus: 1 11:12:13", src: "1 11:12:13", wantErr: true},
+		{name: "bogus: day 11:12:13", src: "day 11:12:13", wantErr: true},
+		{name: "bogus: 11:12:13 2", src: "11:12:13 2", wantErr: true},
+		{name: "bogus: 11:12:13 year", src: "11:12:13 year", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

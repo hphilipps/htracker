@@ -22,8 +22,9 @@ type site struct {
 func (db *db) Get(ctx context.Context, subscription *htracker.Subscription) (*htracker.Site, error) {
 	site := &site{}
 
-	if err := db.conn.GetContext(ctx, site, "SELECT * FROM sites WHERE url=$1 AND filter=$2 AND content_type=$3",
-		subscription.URL, subscription.Filter, subscription.ContentType); err != nil {
+	err := db.conn.GetContext(ctx, site, "SELECT * FROM sites WHERE url=$1 AND filter=$2 AND content_type=$3",
+		subscription.URL, subscription.Filter, subscription.ContentType)
+	if err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "Get"), slog.String("url", subscription.URL),
 			slog.String("filter", subscription.Filter), slog.String("content_type", subscription.ContentType))
 		return &htracker.Site{}, wrapError(err)
@@ -40,7 +41,6 @@ func (db *db) Get(ctx context.Context, subscription *htracker.Subscription) (*ht
 }
 
 func (db *db) Add(ctx context.Context, s *htracker.Site) error {
-
 	query := `
 	INSERT INTO sites
 	(url, filter, content_type, last_updated, last_checked, content, diff, checksum)
@@ -57,7 +57,6 @@ func (db *db) Add(ctx context.Context, s *htracker.Site) error {
 }
 
 func (db *db) Update(ctx context.Context, s *htracker.Site) error {
-
 	query := `
 	UPDATE sites SET
 	last_updated = $1, last_checked = $2, content = $3, diff = $4, checksum = $5

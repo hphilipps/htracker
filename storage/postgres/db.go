@@ -49,8 +49,16 @@ func wrapError(err error) error {
 	return err
 }
 
+// DurationValuer is a wrapper for time.Duration, implementing
+// Scan() and Value(), to be able to convert from and to postgres
+// intervals. It is just covering basic use cases (hh:mm:ss)! No
+// testing for corner cases (nanosecond precision, intervals > 292 years,
+// the meaning of a literal month, negative intervals etc).
+// See: https://www.postgresql.org/docs/14/datatype-datetime.html
+// IntervalStyle Output Table.
 type DurationValuer time.Duration
 
+// Scan implements Scanner.
 func (dv *DurationValuer) Scan(src interface{}) error {
 	if src == nil {
 		*dv = 0
@@ -67,10 +75,13 @@ func (dv *DurationValuer) Scan(src interface{}) error {
 	return fmt.Errorf("duration column was not text; type %T", src)
 }
 
+// Value implements Valuer.
 func (dv DurationValuer) Value() (driver.Value, error) {
 	return marshalForIntervalStyle(time.Duration(dv), "postgres"), nil
 }
 
+// marshalForIntervalStyle converts a time.Duration into a string representation compatible
+// with the 'postgres' style interval format (hh:mm:ss).
 func marshalForIntervalStyle(duration time.Duration, style string) string {
 	switch style {
 	case "postgres":
@@ -89,22 +100,35 @@ func marshalForIntervalStyle(duration time.Duration, style string) string {
 	return "only postgres style supported for intervals"
 }
 
-// See: https://www.postgresql.org/docs/14/datatype-datetime.html
-// IntervalStyle Output Table
+const (
+	// states for parsing a postgres interval string
+	stateNumber = iota
+	stateUnit
+)
+
+// unmarshalForIntervalStyle converts a 'postgres' style interval format
+// ('x years y mons z days hh:mm:ss') into the time.Duration wrapped by the
+// given *DurationValuer.
 func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 
 	if style != "postgres" {
-		return fmt.Errorf("only postgres style interval format supported")
+		return fmt.Errorf("only 'postgres' style interval format supported")
 	}
 
 	value := 0
+	state := -1
 	hours := 0
 	parts := strings.Split(src, " ")
 
+	// We will convert and sum up years, mons and days to hours and convert
+	// '01:02:03' to the time.ParseDuration format '1h2m3s'.
 	i := 0
 	for {
 		if i >= len(parts) {
-			// we reached the end and just return the hours we parsed so far
+			// we reached the end without finding 'hh:mm:ss' and just return the hours we parsed so far
+			if state == stateNumber {
+				return fmt.Errorf("could not parse interval string")
+			}
 			duration, err := time.ParseDuration(strconv.Itoa(hours) + "h")
 			if err != nil {
 				return fmt.Errorf("could not parse interval string")
@@ -112,45 +136,61 @@ func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 			*dv = DurationValuer(duration)
 			return nil
 		}
+
+		// try to parse a number
 		n, err := strconv.Atoi(strings.TrimLeft(parts[i], "0"))
-		if err != nil {
-			if i > 0 {
-				// we already parsed a value before and need to add up hours
-				switch {
-				case strings.Contains(parts[i], "year"):
-					hours = hours + value*24*365
-				case strings.Contains(parts[i], "mon"):
-					hours = hours + value*24*30
-				case strings.Contains(parts[i], "day"):
-					hours = hours + value*24
-				case strings.Contains(parts[i], ":"):
-					duration, err := parseHMS(parts[i])
-					if err != nil {
-						return err
-					}
-					duration = duration + time.Duration(hours)*time.Hour
-					*dv = DurationValuer(duration)
-					return nil
-				default:
-					return fmt.Errorf("could not parse interval string")
-				}
-			} else {
-				// we probably found h:m:s at the beginning
+		if err == nil {
+			// we found a number and just memorize it for the next loop where we evaluate the time unit
+			if state == stateNumber {
+				return fmt.Errorf("could not parse interval string")
+			}
+			value = n
+			state = stateNumber
+			i++
+			continue
+		}
+
+		if i > 0 {
+			// we either found a unit and need to convert the value we found before
+			// accordingly and add it to hours, or we found the final 'hh:mm:ss'
+			switch {
+			case strings.Contains(parts[i], "year") && state == stateNumber:
+				hours = hours + value*24*365
+			case strings.Contains(parts[i], "mon") && state == stateNumber:
+				hours = hours + value*24*30
+			case strings.Contains(parts[i], "day") && state == stateNumber:
+				hours = hours + value*24
+			case strings.Contains(parts[i], ":") && state == stateUnit:
 				duration, err := parseHMS(parts[i])
 				if err != nil {
 					return err
 				}
+				duration = duration + time.Duration(hours)*time.Hour
 				*dv = DurationValuer(duration)
 				return nil
+			default:
+				return fmt.Errorf("could not parse interval string")
 			}
-		} else {
-			// we found a number and memorize it for the next step when we evaluate the unit
-			value = n
+			state = stateUnit
+			i++
+			continue
 		}
-		i++
+
+		// we probably found a single hh:mm:ss string right at the beginning
+		if i+1 != len(parts) {
+			// there shouldn't be more parts after hh:mm:ss
+			return fmt.Errorf("could not parse interval string")
+		}
+		duration, err := parseHMS(parts[i])
+		if err != nil {
+			return err
+		}
+		*dv = DurationValuer(duration)
+		return nil
 	}
 }
 
+// parseHMS is converting '01:02:03' to '1h2m3s'.
 func parseHMS(str string) (time.Duration, error) {
 	hms := strings.Split(str, ":")
 	if len(hms) != 3 {
