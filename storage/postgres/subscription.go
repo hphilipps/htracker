@@ -153,6 +153,9 @@ func (db *db) GetSubscriber(ctx context.Context, email string) (*storage.Subscri
 	}, nil
 }
 
+// AddSubscription is creating an entry in the subscriptions table if necessary, and then adds an entry
+// to the subscriber_subscription relation. A foreign key constraint makes sure the related subscriber is
+// existing in the DB.
 func (db *db) AddSubscription(ctx context.Context, email string, subscription *htracker.Subscription) error {
 
 	logger := slog.New(db.logger.Handler().WithAttrs([]slog.Attr{
@@ -229,12 +232,29 @@ func (db *db) RemoveSubscription(ctx context.Context, email string, subscription
 	query := `DELETE FROM subscriber_subscription WHERE subscriber_email = $1 AND subscription_id IN
 				(SELECT id FROM subscriptions WHERE url = $2 AND filter = $3 AND content_type =$4)`
 
-	if _, err := tx.ExecContext(ctx, query, email, subscription.URL, subscription.Filter, subscription.ContentType); err != nil {
+	res, err := tx.ExecContext(ctx, query, email, subscription.URL, subscription.Filter, subscription.ContentType)
+	if err != nil {
 		logger.Error("query failed, rolling back transaction", err)
 		if err := tx.Rollback(); err != nil {
 			logger.Error("rollback failed", err)
 		}
 		return wrapError(err)
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		logger.Error("couldn't determine result of deletion, rolling back transaction", err)
+		if err := tx.Rollback(); err != nil {
+			logger.Error("rollback failed", err)
+		}
+		return wrapError(err)
+	}
+	if count == 0 {
+		logger.Error("couldn't find the subscription to be deleted", htracker.ErrNotExist)
+		if err := tx.Commit(); err != nil {
+			logger.Error("commit failed", err)
+		}
+		return htracker.ErrNotExist
 	}
 
 	// cleanup non-referenced subscriptions
@@ -261,11 +281,60 @@ func (db *db) RemoveSubscription(ctx context.Context, email string, subscription
 }
 
 func (db *db) RemoveSubscriber(ctx context.Context, email string) error {
+	logger := slog.New(db.logger.Handler().WithAttrs([]slog.Attr{
+		slog.String("method", "RemoveSubscriber"), slog.String("email", email)}))
+
+	tx, err := db.conn.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		logger.Error("failed to begin a transaction", err)
+		return err
+	}
+
 	query := `DELETE FROM subscribers WHERE email = $1`
 
-	if _, err := db.conn.ExecContext(ctx, query, email); err != nil {
-		db.logger.Error("query failed", err, slog.String("method", "RemoveSubscriber"), slog.String("email", email))
+	res, err := tx.ExecContext(ctx, query, email)
+	if err != nil {
+		logger.Error("query failed, rolling back transaction", err)
+		if err := tx.Rollback(); err != nil {
+			logger.Error("rollback failed", err)
+		}
 		return wrapError(err)
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		logger.Error("couldn't determine result of deletion, rolling back transaction", err)
+		if err := tx.Rollback(); err != nil {
+			logger.Error("rollback failed", err)
+		}
+		return wrapError(err)
+	}
+	if count == 0 {
+		logger.Error("couldn't find the subscriber to be deleted", htracker.ErrNotExist)
+		if err := tx.Commit(); err != nil {
+			logger.Error("commit failed", err)
+		}
+		return htracker.ErrNotExist
+	}
+
+	// cleanup non-referenced subscriptions
+	query = `DELETE FROM subscriptions s
+				WHERE NOT EXISTS (
+					SELECT FROM subscriber_subscription ss
+					WHERE s.id = ss.subscription_id
+					)`
+
+	if _, err := tx.ExecContext(ctx, query); err != nil {
+		logger.Error("cleaning up dangling subscriptions failed, rolling back transaction", err)
+		if err := tx.Rollback(); err != nil {
+			logger.Error("rollback failed", err)
+		}
+		return wrapError(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		logger.Error("failed to commit the transaction", err)
+		return err
 	}
 
 	return nil

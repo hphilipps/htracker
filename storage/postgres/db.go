@@ -58,10 +58,10 @@ func (dv *DurationValuer) Scan(src interface{}) error {
 	}
 
 	switch srcStr := src.(type) {
-	case string:
-		return unmarshalForIntervalStyle(srcStr, "postgres", dv)
 	case []byte:
 		return unmarshalForIntervalStyle(string(srcStr), "postgres", dv)
+	case string:
+		return unmarshalForIntervalStyle(srcStr, "postgres", dv)
 	}
 
 	return fmt.Errorf("duration column was not text; type %T", src)
@@ -94,7 +94,7 @@ func marshalForIntervalStyle(duration time.Duration, style string) string {
 func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 
 	if style != "postgres" {
-		return fmt.Errorf("only postgres style duration format supported")
+		return fmt.Errorf("only postgres style interval format supported")
 	}
 
 	value := 0
@@ -104,7 +104,7 @@ func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 	i := 0
 	for {
 		if i >= len(parts) {
-			// we reached the end and return the hours we parsed so far
+			// we reached the end and just return the hours we parsed so far
 			duration, err := time.ParseDuration(strconv.Itoa(hours) + "h")
 			if err != nil {
 				return fmt.Errorf("could not parse interval string")
@@ -115,7 +115,7 @@ func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 		n, err := strconv.Atoi(strings.TrimLeft(parts[i], "0"))
 		if err != nil {
 			if i > 0 {
-				// we already parsed values before and need to add up hours
+				// we already parsed a value before and need to add up hours
 				switch {
 				case strings.Contains(parts[i], "year"):
 					hours = hours + value*24*365
@@ -135,7 +135,7 @@ func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 					return fmt.Errorf("could not parse interval string")
 				}
 			} else {
-				// if we find h:m:s at the beginning
+				// we probably found h:m:s at the beginning
 				duration, err := parseHMS(parts[i])
 				if err != nil {
 					return err
@@ -144,7 +144,7 @@ func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 				return nil
 			}
 		} else {
-			// we found a number and memorize it for the next step
+			// we found a number and memorize it for the next step when we evaluate the unit
 			value = n
 		}
 		i++

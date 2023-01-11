@@ -40,12 +40,14 @@ func (db *db) Get(ctx context.Context, subscription *htracker.Subscription) (*ht
 }
 
 func (db *db) Add(ctx context.Context, s *htracker.Site) error {
-	_, err := db.conn.ExecContext(ctx, `
-INSERT INTO sites
-(url, filter, content_type, last_updated, last_checked, content, diff, checksum)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		s.Subscription.URL, s.Subscription.Filter, s.Subscription.ContentType,
-		s.LastUpdated, s.LastChecked, s.Content, s.Diff, s.Checksum)
+
+	query := `
+	INSERT INTO sites
+	(url, filter, content_type, last_updated, last_checked, content, diff, checksum)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+
+	_, err := db.conn.ExecContext(ctx, query, s.Subscription.URL, s.Subscription.Filter,
+		s.Subscription.ContentType, s.LastUpdated, s.LastChecked, s.Content, s.Diff, s.Checksum)
 	if err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "Add"), slog.String("url", s.Subscription.URL),
 			slog.String("filter", s.Subscription.Filter), slog.String("content_type", s.Subscription.ContentType))
@@ -55,11 +57,14 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 }
 
 func (db *db) Update(ctx context.Context, s *htracker.Site) error {
-	res, err := db.conn.ExecContext(ctx, `
-UPDATE sites SET
-last_updated = $1, last_checked = $2, content = $3, diff = $4, checksum = $5
-WHERE url = $6 AND filter = $7 AND content_type = $8`,
-		s.LastUpdated, s.LastChecked, s.Content, s.Diff, s.Checksum, s.Subscription.URL, s.Subscription.Filter, s.Subscription.ContentType)
+
+	query := `
+	UPDATE sites SET
+	last_updated = $1, last_checked = $2, content = $3, diff = $4, checksum = $5
+	WHERE url = $6 AND filter = $7 AND content_type = $8`
+
+	res, err := db.conn.ExecContext(ctx, query, s.LastUpdated, s.LastChecked,
+		s.Content, s.Diff, s.Checksum, s.Subscription.URL, s.Subscription.Filter, s.Subscription.ContentType)
 	if err != nil {
 		db.logger.Error("query failed", err, slog.String("method", "Update"), slog.String("url", s.Subscription.URL),
 			slog.String("filter", s.Subscription.Filter), slog.String("content_type", s.Subscription.ContentType))
