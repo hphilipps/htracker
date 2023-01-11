@@ -12,7 +12,7 @@ import (
 
 func TestAdd(t *testing.T) {
 	if !runIntegrationTests() {
-		t.Skipf("set %s env var to run this test", intTestVarName)
+		t.Skipf("set %s env var to run this test", integrationTestVar)
 	}
 
 	date1 := time.Now()
@@ -52,20 +52,20 @@ func TestAdd(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	conn, err := New("postgresql://postgres:pg1pw@localhost?sslmode=disable", logger)
+	db, err := New(postgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := conn.Add(ctx, tt.wantSite)
+			err := db.Add(ctx, tt.wantSite)
 			if (err != nil) != tt.wantAddErr {
 				t.Errorf("Add() error = %v, wantAddErr %v", err, tt.wantAddErr)
 				return
 			}
 
-			got, err := conn.Get(ctx, tt.subscription)
+			got, err := db.Get(ctx, tt.subscription)
 			if (err != nil) != tt.wantGetErr {
 				t.Errorf("Get() error = %v, wantGetErr %v", err, tt.wantGetErr)
 				return
@@ -96,7 +96,7 @@ func TestAdd(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	if !runIntegrationTests() {
-		t.Skipf("set %s env var to run this test", intTestVarName)
+		t.Skipf("set %s env var to run this test", integrationTestVar)
 	}
 
 	date1 := time.Now()
@@ -152,7 +152,7 @@ func TestUpdate(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	conn, err := New("postgresql://postgres:pg1pw@localhost?sslmode=disable", logger)
+	db, err := New(postgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
@@ -160,19 +160,19 @@ func TestUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.addSite {
-				if err := conn.Add(ctx, tt.wantSite); err != nil {
+				if err := db.Add(ctx, tt.wantSite); err != nil {
 					t.Errorf("Failed to add site: %v", err)
 					return
 				}
 			}
 
-			err := conn.Update(ctx, tt.wantSite)
+			err := db.Update(ctx, tt.wantSite)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Update() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			got, err := conn.Get(ctx, tt.subscription)
+			got, err := db.Get(ctx, tt.subscription)
 			if (err != nil) != tt.wantGetErr {
 				t.Errorf("Get() error = %v, wantGetErr %v", err, tt.wantGetErr)
 				return

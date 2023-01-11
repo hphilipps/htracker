@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"testing"
@@ -10,10 +11,18 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-const intTestVarName = "INTEGRATION_TESTS"
+const (
+	integrationTestVar = "INTEGRATION_TESTS"
+	postgresUserVar    = "POSTGRES_USER"
+	postgresPWVar      = "POSTGRES_PW"
+	postgresHostVar    = "POSTGRES_HOST"
+	postgresPortVar    = "POSTGRES_PORT"
+	postgresDBVar      = "POSTGRES_DB"
+	postgresOptsVar    = "POSTGRES_OPTS"
+)
 
 func runIntegrationTests() bool {
-	intTestVar := os.Getenv(intTestVarName)
+	intTestVar := os.Getenv(integrationTestVar)
 
 	if run, err := strconv.ParseBool(intTestVar); err != nil || !run {
 		return false
@@ -22,9 +31,43 @@ func runIntegrationTests() bool {
 	return true
 }
 
+func postgresURIfromEnvVars() string {
+	user := os.Getenv(postgresUserVar)
+	pw := os.Getenv(postgresPWVar)
+	host := os.Getenv(postgresHostVar)
+	port := os.Getenv(postgresPortVar)
+	db := os.Getenv(postgresDBVar)
+	opts := os.Getenv(postgresOptsVar)
+
+	if user == "" {
+		user = "postgres"
+	}
+	if host == "" {
+		host = "localhost"
+	}
+	if port == "" {
+		port = "5432"
+	}
+	if db == "" {
+		db = "postgres"
+	}
+
+	pwStr := ""
+	if pw != "" {
+		pwStr = ":" + pw
+	}
+
+	optStr := "?sslmode=disable"
+	if opts != "" {
+		optStr = opts
+	}
+
+	return fmt.Sprintf("postgres://%s%s@%s:%s/%s%s", user, pwStr, host, port, db, optStr)
+}
+
 func TestNew_Integration(t *testing.T) {
 	if !runIntegrationTests() {
-		t.Skipf("set %s env var to run this test", intTestVarName)
+		t.Skipf("set %s env var to run this test", integrationTestVar)
 	}
 
 	tests := []struct {
@@ -32,7 +75,7 @@ func TestNew_Integration(t *testing.T) {
 		uri     string
 		wantErr bool
 	}{
-		{name: "connect uri", uri: "postgresql://postgres:pg1pw@localhost?sslmode=disable"},
+		{name: "connect uri", uri: "postgresql://postgres:pg1pw@localhost/postgres?sslmode=disable"},
 		{name: "connect string", uri: "host=localhost port=5432 dbname=postgres user=postgres password=pg1pw sslmode=disable"},
 		{name: "wrong password", uri: "postgresql://postgres:wrong_pw@localhost?sslmode=disable", wantErr: true},
 	}

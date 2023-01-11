@@ -12,7 +12,7 @@ import (
 
 func Test_db_AddSubscriber(t *testing.T) {
 	if !runIntegrationTests() {
-		t.Skipf("set %s env var to run this test", intTestVarName)
+		t.Skipf("set %s env var to run this test", integrationTestVar)
 	}
 
 	sub1 := &storage.Subscriber{Email: "email1", SubscriptionLimit: 0}
@@ -31,7 +31,7 @@ func Test_db_AddSubscriber(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New("postgresql://postgres:pg1pw@localhost?sslmode=disable", logger)
+	db, err := New(postgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
@@ -77,7 +77,7 @@ func Test_db_AddSubscriber(t *testing.T) {
 
 func Test_db_AddSubscription_and_Find(t *testing.T) {
 	if !runIntegrationTests() {
-		t.Skipf("set %s env var to run this test", intTestVarName)
+		t.Skipf("set %s env var to run this test", integrationTestVar)
 	}
 
 	subscriber1 := &storage.Subscriber{Email: "addsubemail1", SubscriptionLimit: 0}
@@ -109,7 +109,7 @@ func Test_db_AddSubscription_and_Find(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New("postgresql://postgres:pg1pw@localhost?sslmode=disable", logger)
+	db, err := New(postgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
@@ -174,7 +174,7 @@ func Test_db_AddSubscription_and_Find(t *testing.T) {
 
 func Test_db_RemoveSubscription(t *testing.T) {
 	if !runIntegrationTests() {
-		t.Skipf("set %s env var to run this test", intTestVarName)
+		t.Skipf("set %s env var to run this test", integrationTestVar)
 	}
 
 	subscriber1 := &storage.Subscriber{Email: "rmsubemail1", SubscriptionLimit: 0}
@@ -205,7 +205,7 @@ func Test_db_RemoveSubscription(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New("postgresql://postgres:pg1pw@localhost?sslmode=disable", logger)
+	db, err := New(postgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
@@ -259,7 +259,7 @@ func Test_db_RemoveSubscription(t *testing.T) {
 
 func Test_db_RemoveSubscriber(t *testing.T) {
 	if !runIntegrationTests() {
-		t.Skipf("set %s env var to run this test", intTestVarName)
+		t.Skipf("set %s env var to run this test", integrationTestVar)
 	}
 
 	subscriber1 := &storage.Subscriber{Email: "rmsubsbemail1", SubscriptionLimit: 0}
@@ -287,7 +287,7 @@ func Test_db_RemoveSubscriber(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New("postgresql://postgres:pg1pw@localhost?sslmode=disable", logger)
+	db, err := New(postgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
