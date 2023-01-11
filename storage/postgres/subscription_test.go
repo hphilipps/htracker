@@ -84,8 +84,8 @@ func Test_db_AddSubscription_and_Find(t *testing.T) {
 	subscriber2 := &storage.Subscriber{Email: "addsubemail2", SubscriptionLimit: 10}
 
 	subscription1 := &htracker.Subscription{URL: "addsubsite1", Filter: "filter1", ContentType: "text",
-		UseChrome: true, Interval: 12340*time.Hour + 6*time.Minute + 11*time.Second}
-	subscription2 := &htracker.Subscription{URL: "addsubsite2", Interval: 30 * time.Minute}
+		UseChrome: true, Interval: 12340*time.Hour + 6*time.Minute + 11*time.Second + 13*time.Millisecond}
+	subscription2 := &htracker.Subscription{URL: "addsubsite2", Interval: 30*time.Minute + time.Millisecond}
 
 	tests := []struct {
 		name              string

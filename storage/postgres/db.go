@@ -11,7 +11,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 	"gitlab.com/henri.philipps/htracker"
 	"golang.org/x/exp/slog"
 )
@@ -21,8 +20,8 @@ type db struct {
 	logger *slog.Logger
 }
 
-func New(uri string, logger *slog.Logger) (db, error) {
-	var db db
+func New(uri string, logger *slog.Logger) (*db, error) {
+	db := &db{}
 	conn, err := sqlx.Open("postgres", uri)
 	if err != nil {
 		return db, err
@@ -35,6 +34,7 @@ func New(uri string, logger *slog.Logger) (db, error) {
 	return db, nil
 }
 
+// wrapError is translating some postgres errors into domain errors.
 func wrapError(err error) error {
 	switch e := err.(type) {
 	case *pq.Error:
@@ -85,6 +85,7 @@ func (dv DurationValuer) Value() (driver.Value, error) {
 func marshalForIntervalStyle(duration time.Duration, style string) string {
 	switch style {
 	case "postgres":
+		milliseconds := (duration / time.Millisecond) % 1000
 		seconds := (duration / time.Second) % 60
 		minutes := (duration / time.Minute) % 60
 		hours := duration / time.Hour
@@ -95,13 +96,16 @@ func marshalForIntervalStyle(duration time.Duration, style string) string {
 		str.WriteString(fmt.Sprintf("%02d", minutes))
 		str.WriteString(":")
 		str.WriteString(fmt.Sprintf("%02d", seconds))
+		if milliseconds != 0 {
+			str.WriteString(fmt.Sprintf(".%03d", milliseconds))
+		}
 		return str.String()
 	}
 	return "only postgres style supported for intervals"
 }
 
 const (
-	// states for parsing a postgres interval string
+	// for state machine when parsing a postgres interval string
 	stateNumber = iota
 	stateUnit
 )
