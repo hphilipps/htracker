@@ -52,7 +52,7 @@ func TestAdd(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New(postgresURIfromEnvVars(), logger)
+	db, err := New(PostgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestUpdate(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New(postgresURIfromEnvVars(), logger)
+	db, err := New(PostgresURIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}

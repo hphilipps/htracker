@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -119,9 +120,9 @@ func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 		return fmt.Errorf("only 'postgres' style interval format supported")
 	}
 
-	value := 0
+	value := 0 // the value of the last parsed number
 	state := -1
-	hours := 0
+	hours := 0 // cummulated number of hours we parsed and converted so far
 	parts := strings.Split(src, " ")
 
 	// We will convert and sum up years, mons and days to hours and convert
@@ -206,4 +207,49 @@ func parseHMS(str string) (time.Duration, error) {
 		return time.Duration(0), fmt.Errorf("could not parse interval string %s: %v", dstr, err)
 	}
 	return duration, nil
+}
+
+const (
+	// env var names
+	postgresUserVar = "POSTGRES_USER"
+	postgresPWVar   = "POSTGRES_PW"
+	postgresHostVar = "POSTGRES_HOST"
+	postgresPortVar = "POSTGRES_PORT"
+	postgresDBVar   = "POSTGRES_DB"
+	postgresOptsVar = "POSTGRES_OPTS"
+)
+
+// PostgresURIfromEnvVars is constructing a postgres uri string from env vars.
+func PostgresURIfromEnvVars() string {
+	user := os.Getenv(postgresUserVar)
+	pw := os.Getenv(postgresPWVar)
+	host := os.Getenv(postgresHostVar)
+	port := os.Getenv(postgresPortVar)
+	db := os.Getenv(postgresDBVar)
+	opts := os.Getenv(postgresOptsVar)
+
+	if user == "" {
+		user = "postgres"
+	}
+	if host == "" {
+		host = "localhost"
+	}
+	if port == "" {
+		port = "5432"
+	}
+	if db == "" {
+		db = "postgres"
+	}
+
+	pwStr := ""
+	if pw != "" {
+		pwStr = ":" + pw
+	}
+
+	optStr := "?sslmode=disable"
+	if opts != "" {
+		optStr = opts
+	}
+
+	return fmt.Sprintf("postgres://%s%s@%s:%s/%s%s", user, pwStr, host, port, db, optStr)
 }

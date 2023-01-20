@@ -9,6 +9,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.7
 	github.com/oklog/run v1.1.0
+	github.com/peterbourgon/ff/v3 v3.3.0
 	github.com/sergi/go-diff v1.2.0
 	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15
 	golang.org/x/net v0.4.0

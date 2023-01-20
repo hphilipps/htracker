@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"testing"
@@ -13,12 +12,6 @@ import (
 
 const (
 	integrationTestVar = "INTEGRATION_TESTS"
-	postgresUserVar    = "POSTGRES_USER"
-	postgresPWVar      = "POSTGRES_PW"
-	postgresHostVar    = "POSTGRES_HOST"
-	postgresPortVar    = "POSTGRES_PORT"
-	postgresDBVar      = "POSTGRES_DB"
-	postgresOptsVar    = "POSTGRES_OPTS"
 )
 
 func runIntegrationTests() bool {
@@ -29,40 +22,6 @@ func runIntegrationTests() bool {
 	}
 
 	return true
-}
-
-func postgresURIfromEnvVars() string {
-	user := os.Getenv(postgresUserVar)
-	pw := os.Getenv(postgresPWVar)
-	host := os.Getenv(postgresHostVar)
-	port := os.Getenv(postgresPortVar)
-	db := os.Getenv(postgresDBVar)
-	opts := os.Getenv(postgresOptsVar)
-
-	if user == "" {
-		user = "postgres"
-	}
-	if host == "" {
-		host = "localhost"
-	}
-	if port == "" {
-		port = "5432"
-	}
-	if db == "" {
-		db = "postgres"
-	}
-
-	pwStr := ""
-	if pw != "" {
-		pwStr = ":" + pw
-	}
-
-	optStr := "?sslmode=disable"
-	if opts != "" {
-		optStr = opts
-	}
-
-	return fmt.Sprintf("postgres://%s%s@%s:%s/%s%s", user, pwStr, host, port, db, optStr)
 }
 
 func TestNew_Integration(t *testing.T) {
