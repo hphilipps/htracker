@@ -16,6 +16,9 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+const stylePostgres = "postgres"
+const driverPostgres = "postgres"
+
 type db struct {
 	conn   *sqlx.DB
 	logger *slog.Logger
@@ -23,7 +26,7 @@ type db struct {
 
 func New(uri string, logger *slog.Logger) (*db, error) {
 	db := &db{}
-	conn, err := sqlx.Open("postgres", uri)
+	conn, err := sqlx.Open(driverPostgres, uri)
 	if err != nil {
 		return db, err
 	}
@@ -31,7 +34,7 @@ func New(uri string, logger *slog.Logger) (*db, error) {
 		return db, err
 	}
 	db.conn = conn
-	db.logger = logger.With(slog.String("driver", "postgresql"))
+	db.logger = logger.With(slog.String("driver", driverPostgres))
 	return db, nil
 }
 
@@ -68,9 +71,9 @@ func (dv *DurationValuer) Scan(src interface{}) error {
 
 	switch srcStr := src.(type) {
 	case []byte:
-		return unmarshalForIntervalStyle(string(srcStr), "postgres", dv)
+		return unmarshalForIntervalStyle(string(srcStr), stylePostgres, dv)
 	case string:
-		return unmarshalForIntervalStyle(srcStr, "postgres", dv)
+		return unmarshalForIntervalStyle(srcStr, stylePostgres, dv)
 	}
 
 	return fmt.Errorf("duration column was not text; type %T", src)
@@ -78,14 +81,14 @@ func (dv *DurationValuer) Scan(src interface{}) error {
 
 // Value implements Valuer.
 func (dv DurationValuer) Value() (driver.Value, error) {
-	return marshalForIntervalStyle(time.Duration(dv), "postgres"), nil
+	return marshalForIntervalStyle(time.Duration(dv), stylePostgres), nil
 }
 
 // marshalForIntervalStyle converts a time.Duration into a string representation compatible
 // with the 'postgres' style interval format (hh:mm:ss).
 func marshalForIntervalStyle(duration time.Duration, style string) string {
 	switch style {
-	case "postgres":
+	case stylePostgres:
 		milliseconds := (duration / time.Millisecond) % 1000
 		seconds := (duration / time.Second) % 60
 		minutes := (duration / time.Minute) % 60
@@ -116,7 +119,7 @@ const (
 // given *DurationValuer.
 func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 
-	if style != "postgres" {
+	if style != stylePostgres {
 		return fmt.Errorf("only 'postgres' style interval format supported")
 	}
 
