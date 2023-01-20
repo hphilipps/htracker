@@ -163,17 +163,17 @@ func unmarshalForIntervalStyle(src, style string, dv *DurationValuer) error {
 			// accordingly and add it to hours, or we found the final 'hh:mm:ss'
 			switch {
 			case strings.Contains(parts[i], "year") && state == stateNumber:
-				hours = hours + value*24*365
+				hours += value * 24 * 365
 			case strings.Contains(parts[i], "mon") && state == stateNumber:
-				hours = hours + value*24*30
+				hours += value * 24 * 30
 			case strings.Contains(parts[i], "day") && state == stateNumber:
-				hours = hours + value*24
+				hours += value * 24
 			case strings.Contains(parts[i], ":") && state == stateUnit:
 				duration, err := parseHMS(parts[i])
 				if err != nil {
 					return err
 				}
-				duration = duration + time.Duration(hours)*time.Hour
+				duration += time.Duration(hours) * time.Hour
 				*dv = DurationValuer(duration)
 				return nil
 			default:
@@ -207,7 +207,7 @@ func parseHMS(str string) (time.Duration, error) {
 	dstr := hms[0] + "h" + hms[1] + "m" + hms[2] + "s"
 	duration, err := time.ParseDuration(dstr)
 	if err != nil {
-		return time.Duration(0), fmt.Errorf("could not parse interval string %s: %v", dstr, err)
+		return time.Duration(0), fmt.Errorf("could not parse interval string %s: %w", dstr, err)
 	}
 	return duration, nil
 }
@@ -222,8 +222,8 @@ const (
 	postgresOptsVar = "POSTGRES_OPTS"
 )
 
-// PostgresURIfromEnvVars is constructing a postgres uri string from env vars.
-func PostgresURIfromEnvVars() string {
+// URIfromEnvVars is constructing a postgres uri string from env vars.
+func URIfromEnvVars() string {
 	user := os.Getenv(postgresUserVar)
 	pw := os.Getenv(postgresPWVar)
 	host := os.Getenv(postgresHostVar)

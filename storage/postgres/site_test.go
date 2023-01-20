@@ -52,7 +52,7 @@ func TestAdd(t *testing.T) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New(PostgresURIfromEnvVars(), logger)
+	db, err := New(URIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestUpdate(t *testing.T) {
 		Checksum:     "1234",
 		Diff:         "diff1ä",
 	}
-	site1_updated := &htracker.Site{
+	site1Updated := &htracker.Site{
 		Subscription: sub1,
 		LastUpdated:  date1,
 		LastChecked:  date1,
@@ -127,7 +127,7 @@ func TestUpdate(t *testing.T) {
 		Checksum:     "5678",
 		Diff:         "",
 	}
-	site2_updated := &htracker.Site{
+	site2Updated := &htracker.Site{
 		Subscription: sub2,
 		LastUpdated:  date2,
 		LastChecked:  date2,
@@ -145,14 +145,14 @@ func TestUpdate(t *testing.T) {
 		wantGetErr   bool
 	}{
 		{name: "update site1 with same content", subscription: sub1, addSite: true, wantSite: site1},
-		{name: "update site1 with new content", subscription: sub1, wantSite: site1_updated},
+		{name: "update site1 with new content", subscription: sub1, wantSite: site1Updated},
 		{name: "update non-existing site2", subscription: sub2, wantSite: site2, wantErr: true, wantGetErr: true},
-		{name: "update site2", subscription: sub2, addSite: true, wantSite: site2_updated},
+		{name: "update site2", subscription: sub2, addSite: true, wantSite: site2Updated},
 	}
 
 	ctx := context.Background()
 	logger := slog.Default()
-	db, err := New(PostgresURIfromEnvVars(), logger)
+	db, err := New(URIfromEnvVars(), logger)
 	if err != nil {
 		t.Fatalf("Failed to open DB connection: %v", err)
 	}

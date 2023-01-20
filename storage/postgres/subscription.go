@@ -181,22 +181,22 @@ func (db *db) AddSubscription(ctx context.Context, email string, subscription *h
 				logger.Error("rollback failed", err)
 			}
 			return err
-		} else {
-			// we didn't find a subscription so we create one now
-			query = `INSERT INTO subscriptions(url, filter, content_type, use_chrome)
+		}
+
+		// we didn't find a subscription so we create one now
+		query = `INSERT INTO subscriptions(url, filter, content_type, use_chrome)
 				VALUES($1, $2, $3, $4) ON CONFLICT(url, content_type, filter) DO UPDATE
 				SET url = $1, filter = $2, content_type = $3, use_chrome = $4
 				RETURNING id`
 
-			row := tx.QueryRowxContext(ctx, query, subscription.URL, subscription.Filter, subscription.ContentType, subscription.UseChrome)
-			err := row.Scan(&id)
-			if err != nil {
-				logger.Error("query failed, rolling back transaction", err)
-				if err := tx.Rollback(); err != nil {
-					logger.Error("rollback failed", err)
-				}
-				return wrapError(err)
+		row := tx.QueryRowxContext(ctx, query, subscription.URL, subscription.Filter, subscription.ContentType, subscription.UseChrome)
+		err := row.Scan(&id)
+		if err != nil {
+			logger.Error("query failed, rolling back transaction", err)
+			if err := tx.Rollback(); err != nil {
+				logger.Error("rollback failed", err)
 			}
+			return wrapError(err)
 		}
 	}
 
@@ -263,7 +263,7 @@ func (db *db) RemoveSubscription(ctx context.Context, email string, subscription
 				WHERE NOT EXISTS (
 					SELECT FROM subscriber_subscription ss
 					WHERE s.id = ss.subscription_id
-					)`
+				)`
 
 	if _, err := tx.ExecContext(ctx, query); err != nil {
 		logger.Error("query failed, rolling back transaction", err)

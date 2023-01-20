@@ -28,8 +28,8 @@ var (
 	servefs         = flag.NewFlagSet("serve", flag.ExitOnError)
 	addrFlag        = servefs.String("addr", ":8080", "address the server is listening on")
 	chromeWSFlag    = servefs.String("ws", "ws://localhost:3000", "websocket url of chrome instance to connect to for site rendering")
-	intervalFlag    = servefs.Int("i", 3600, "interval in seconds between watcher runs")
-	gracePeriodFlag = servefs.Int("g", 10, "shutdown grace period in seconds")
+	intervalFlag    = servefs.Int("interval", 3600, "interval in seconds between watcher runs")
+	gracePeriodFlag = servefs.Int("grace", 10, "shutdown grace period in seconds")
 	backendFlag     = servefs.String("backend", memoryBackend, "the storage backend (memory|postgres)")
 	postgresFlag    = servefs.String("pguri", "postgres://localhost?sslmode=disable", "postgres connection uri")
 )
@@ -94,9 +94,10 @@ func newServeFunc() func(context.Context, []string) error {
 		// add watcher to run group
 		g.Add(func() error { return watcher.Start(ctx) }, func(error) { cancel() })
 
-		// instead of ListenAndServe(), which can't be interrupted, we create our own
+		// Instead of ListenAndServe(), which can't be interrupted, we create our own
 		// Server and add it's Serve() method to the run group later.
-		server := http.Server{Handler: router}
+		// We set ReadHeaderTimeout to prevent Slowloris attacks.
+		server := http.Server{Handler: router, ReadHeaderTimeout: 5 * time.Second}
 
 		logger.Info("start listening...", slog.String("listen_addr", *addrFlag))
 		ln, err := net.Listen("tcp", *addrFlag)
@@ -105,8 +106,12 @@ func newServeFunc() func(context.Context, []string) error {
 			return err
 		}
 
-		graceTimeout, _ := context.WithTimeout(ctx, time.Duration(*gracePeriodFlag)*time.Second)
-		g.Add(func() error { return server.Serve(ln) }, func(error) { server.Shutdown(graceTimeout) })
+		graceTimeoutCtx, _ := context.WithTimeout(ctx, time.Duration(*gracePeriodFlag)*time.Second)
+		g.Add(func() error { return server.Serve(ln) }, func(error) {
+			if err := server.Shutdown(graceTimeoutCtx); err != nil {
+				logger.Error("graceful shutdown error", err)
+			}
+		})
 
 		err = g.Run()
 		logger.Info("exiting", slog.String("reason", err.Error()))
