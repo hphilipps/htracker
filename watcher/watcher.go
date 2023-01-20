@@ -165,13 +165,8 @@ func (w *Watcher) startWorkers(ctx context.Context, batches chan []*htracker.Sub
 						return
 					}
 
-					scraper := scraper.NewScraper(batch,
-						scraper.WithExporters(exporters),
-						scraper.WithLogger(w.logger),
-					)
-					for _, opt := range w.scraperOpts {
-						opt(scraper)
-					}
+					opts := append(w.scraperOpts, scraper.WithExporters(exporters), scraper.WithLogger(w.logger))
+					scraper := scraper.NewScraper(batch, opts...)
 
 					w.logger.Debug("watcher: scraper starting", slog.Int("worker", workerNr))
 					scraper.Start()
