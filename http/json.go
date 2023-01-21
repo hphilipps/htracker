@@ -46,6 +46,13 @@ func createJSONHandler[Req endpoint.Requester, Resp endpoint.Responder](ep endpo
 // right now we only do a basic nil check there.
 func decodeHTTPJSONRequest[Req endpoint.Requester](_ context.Context, r *http.Request) (Req, error) {
 	var req Req
+
+	// do not try to decode an empty response
+	if emptyer, ok := any(req).(endpoint.Emptyer); ok {
+		if emptyer.Empty() {
+			return req, nil
+		}
+	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	return req, err
 }

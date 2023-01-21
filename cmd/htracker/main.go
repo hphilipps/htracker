@@ -44,8 +44,6 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	os.Exit(0)
 }
 
 func createLogger(levelStr string) (*slog.Logger, error) {

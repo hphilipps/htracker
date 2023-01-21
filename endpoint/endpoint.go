@@ -8,7 +8,7 @@ import (
 // It represents a single RPC method.
 type Endpoint[Req Requester, Resp Responder] func(ctx context.Context, request Req) (response Resp, err error)
 
-// Requester is an interface helpful to enrich endpoint middlewares with information.
+// Requester is an interface helpful for decoders and to enrich endpoint middlewares with information.
 type Requester interface {
 	Name() string
 }
@@ -17,4 +17,9 @@ type Requester interface {
 type Responder interface {
 	Failed() error
 	StatusCode() int
+}
+
+// Emptyer is an interface which responses can implement to inform decoders that no data is expected.
+type Emptyer interface {
+	Empty() bool
 }
