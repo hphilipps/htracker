@@ -179,6 +179,10 @@ func (req GetSubscribersReq) Name() string {
 	return "GetSubscribers"
 }
 
+func (req GetSubscribersReq) Empty() bool {
+	return true
+}
+
 type GetSubscribersResp struct {
 	Subscribers []*service.Subscriber
 	err         error

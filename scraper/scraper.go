@@ -60,11 +60,12 @@ func newParseFunc(subscription *htracker.Subscription, logger *slog.Logger) func
 			return
 		}
 
-		if subscription.Filter == "" {
+		switch {
+		case subscription.Filter == "":
 			content = r.Body
-		} else if r.HTMLDoc != nil {
+		case r.HTMLDoc != nil:
 			content = []byte(r.HTMLDoc.Find(subscription.Filter).Text())
-		} else {
+		default:
 			exp, err := regexp.Compile(subscription.Filter)
 			if err != nil {
 				logger.Error("ParseFunc failed to compile regexp", err, slog.String("regexp", subscription.Filter), slog.String("site", subscription.URL))

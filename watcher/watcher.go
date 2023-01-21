@@ -82,12 +82,12 @@ func WithLogger(logger *slog.Logger) Opt {
 
 // GenerateScrapeList is returning a list of Subscriptions to be scraped by going through
 // all subscriptions and deduplicating them.
-func (w *Watcher) GenerateScrapeList() (subscriptions []*htracker.Subscription, err error) {
+func (w *Watcher) GenerateScrapeList(ctx context.Context) (subscriptions []*htracker.Subscription, err error) {
 
 	// set of unique sites for deduplication of scrape list
 	siteSet := map[string]bool{}
 
-	subscribers, err := w.subSvc.GetSubscribers(context.Background())
+	subscribers, err := w.subSvc.GetSubscribers(ctx)
 	if err != nil {
 		return subscriptions, fmt.Errorf("SubscriptionSvc.GetSubscribers(): %w", err)
 	}
@@ -165,13 +165,8 @@ func (w *Watcher) startWorkers(ctx context.Context, batches chan []*htracker.Sub
 						return
 					}
 
-					scraper := scraper.NewScraper(batch,
-						scraper.WithExporters(exporters),
-						scraper.WithLogger(w.logger),
-					)
-					for _, opt := range w.scraperOpts {
-						opt(scraper)
-					}
+					opts := append(w.scraperOpts, scraper.WithExporters(exporters), scraper.WithLogger(w.logger))
+					scraper := scraper.NewScraper(batch, opts...)
 
 					w.logger.Debug("watcher: scraper starting", slog.Int("worker", workerNr))
 					scraper.Start()
@@ -196,7 +191,7 @@ func (w *Watcher) Start(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		sites, err := w.GenerateScrapeList()
+		sites, err := w.GenerateScrapeList(ctx)
 		if err != nil {
 			return fmt.Errorf("watcher.GenerateScrapeList(): %w", err)
 		}

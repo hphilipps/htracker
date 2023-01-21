@@ -68,7 +68,7 @@ func TestWatcher_GenerateScrapeList(t *testing.T) {
 				}
 			}
 
-			gotSubsciptions, err := w.GenerateScrapeList()
+			gotSubsciptions, err := w.GenerateScrapeList(ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Watcher.GenerateScrapeList() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -349,7 +349,6 @@ func TestSubscriptionSvc_GetSubscribers(t *testing.T) {
 }
 
 func TestSubscriptionSvc_DeleteSubscriber(t *testing.T) {
-
 	type args struct {
 		email string
 	}

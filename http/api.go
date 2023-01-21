@@ -12,9 +12,14 @@ func MakeAPIHandler(archivesvc service.SiteArchive, subcriptionsvc service.Subsc
 	subscriptionEndpoints := endpoint.MakeSubscriptionEndpoints(subcriptionsvc, logger)
 
 	router := chi.NewRouter()
-	router.Get("/api/get", createJSONHandler(archiveEndpoints.Get))
+	router.Get("/api/site", createJSONHandler(archiveEndpoints.Get))
 	router.Post("/api/subscriber", createJSONHandler(subscriptionEndpoints.AddSubscriber))
-	router.Post("/api/subscribe", createJSONHandler(subscriptionEndpoints.Subscribe))
+	router.Get("/api/subscriber", createJSONHandler(subscriptionEndpoints.GetSubscribers))
+	router.Get("/api/subscriber/by_subscription", createJSONHandler(subscriptionEndpoints.GetSubscribersBySubscription))
+	router.Delete("/api/subscriber", createJSONHandler(subscriptionEndpoints.DeleteSubscriber))
+	router.Post("/api/subscription", createJSONHandler(subscriptionEndpoints.Subscribe))
+	router.Get("/api/subscription/by_subscriber", createJSONHandler(subscriptionEndpoints.GetSubscriptionsBySubscriber))
+	router.Delete("/api/subscription", createJSONHandler(subscriptionEndpoints.Unsubscribe))
 
 	return router
 }
